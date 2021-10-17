@@ -5,24 +5,21 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import argparse
-if __name__ == "__main__":
-    
 
-    parser = argparse.ArgumentParser(description='Proccess REBASE into parquet')
-    parser.add_argument('--input', default='~/dev/deeplearning/focus/data/All_Type_II_restriction_enzyme_genes_Protein.txt', type=str,
-                        help='Path to/name of input file')
-    parser.add_argument('--output', default='~/dev/deeplearning/focus/data/example.parquet', type=str,
-                        help='Path to/name of output file. NEEDS TO BE ".parquet"')
-    args = parser.parse_args()
-    with open(args.input, 'r') as f:
+from omegaconf import DictConfig, OmegaConf
+import hydra
+from tqdm import tqdm
+
+@hydra.main(config_path='configs', config_name='defaults')
+def main(cfg: DictConfig) -> None:
+    print(OmegaConf.to_yaml(cfg))
+
+    with open(cfg.io.input, 'r') as f:
         coke = f.readlines()
         df = pd.DataFrame(columns=['name', 'seq', 'bind'])
         start = False
-        seq = ''
-        name = ''
-        bind = ''
-        i = 0
-        for line in coke:
+        seq, name, bind = '', '', ''
+        for line in tqdm(coke):
             if line == '\n':
                 if start ==  True:
                     # print(seq, name, bind)
@@ -31,9 +28,6 @@ if __name__ == "__main__":
                     seq = ''
                     name = ''
                     bind = ''
-                    if i %1000 == 1:
-                        print(i)
-                    i+=1
                     start = False
                     
             elif line[0] == '>':
@@ -51,3 +45,7 @@ if __name__ == "__main__":
         table = pa.Table.from_pandas(df)
         pq.write_table(table, 'args.output')
         f.close() 
+
+
+if __name__ == "__main__":
+    main()

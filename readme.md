@@ -9,7 +9,22 @@ In Data repo:
 >get Readme          (to copy the file called Readme to your machine)
 >quit                (returns you back to your local system).
 
-
+On redhat:
+```
+module load ncftp/3.2.6
+ncftp ftp.neb.com
+cd pub/rebase
+dir
+get type2.110
+get type2ref.110
+get type2ref.txt
+get type2.txt
+get Type_II_methyltransferase_genes_DNA.txt
+get Type_II_methyltransferase_genes_Protein.txt
+get All_Type_II_restriction_enzyme_genes_Protein.txt
+get All_Type_II_restriction_enzyme_genes_DNA.txt
+exit
+```
 
 In code repo:
 > pip install -r requirments.txt

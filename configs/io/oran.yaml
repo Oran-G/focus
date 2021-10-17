@@ -1,0 +1,2 @@
+input: ~/dev/deeplearning/focus/data/All_Type_II_restriction_enzyme_genes_Protein.txt
+output: ~/dev/deeplearning/focus/data/All_Type_II_restriction_enzyme_genes_Protein.parquet
