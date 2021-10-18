@@ -8,20 +8,9 @@ from torch.utils.data import DataLoader
 from omegaconf import DictConfig, OmegaConf
 import hydra
 
+import torchmetrics
 
-from typing import List
-
-# import fairseq.data.fairseq_dataset
-# fairseq.data.fairseq_dataset.fasta_file_path = lambda x: x
-
-
-'''
-TODO:
-* process the DNA label and amino acid sequence independently
-* get labels, input_ids, attention_mask into the correct form
-* make sure embedding is working properly
-* make sure eos is in the right position
-'''
+from typing import List, Dict
 
 class SupervisedRebaseDataset(BaseWrapperDataset):
     '''
@@ -31,10 +20,19 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
         super().__init__(dataset)
 
         self.filtered_indices = []
-        
+
+        # example desc: ['>AacAA1ORF2951P', 'GATATC', '280', 'aa']
+        self.dna_element = 1 # element in desc corresponding to the DNA
+
+        def encodes_as_dna(s: str):
+            for c in s:
+                if c not in ['A', 'T', 'C', 'G']:
+                    return False
+            return True
+
         # filter indicies which don't have supervised labels
         for idx, (desc, seq) in enumerate(dataset):
-            if len(desc.split()) == 4:
+            if len(desc.split()) == 4 and encodes_as_dna(desc.split()[self.dna_element]):
                 self.filtered_indices.append(idx)
     
     def __len__(self):
@@ -43,40 +41,95 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
     def __getitem__(self, idx):
         # translate to our filtered indices
         new_idx = self.filtered_indices[idx]
-        return self.dataset[new_idx]
+        desc, seq = self.dataset[new_idx]
+
+        return {
+            'protein': seq.replace(' ', ''),
+            'dna': desc.split()[self.dna_element]
+        }        
+        
 
 class EncodedFastaDatasetWrapper(BaseWrapperDataset):
     """
     EncodedFastaDataset implemented as a wrapper
     """
 
-    def __init__(self, dataset, dictionary):
+    def __init__(self, dataset, dictionary, apply_bos=True, apply_eos=False):
+        '''
+        Options to apply bos and eos tokens. Fairseq datasets will usually have eos already applied,
+        but won't have bos. Hence the defaults here.
+        '''
         super().__init__(dataset)
         self.dictionary = dictionary
+        self.apply_bos = apply_bos
+        self.apply_eos = apply_eos
 
     def __getitem__(self, idx):
         desc, seq = self.dataset[idx]
-        return self.dictionary.encode_line(seq, line_tokenizer=list).long()
+        return {
+            k: self.dictionary.encode_line(v, line_tokenizer=list).long()
+            for k, v in self.dataset[idx].items()
+        }
 
-
-    def collater(self, batch):
+    def collate_tensors(self, batch: List[torch.tensor]):
         batch_size = len(batch)
         max_len = max(el.size(0) for el in batch)
         tokens = torch.empty(
             (
                 batch_size,
-                max_len + 2 # eos and bos
+                max_len + int(self.apply_bos) + int(self.apply_eos) # eos and bos
             ),
             dtype=torch.int64,
         ).fill_(self.dictionary.pad())
 
-        tokens[:, 0] = self.dictionary.bos()
-        tokens[:, -1]= self.dictionary.eos()
+        if self.apply_bos:
+            tokens[:, 0] = self.dictionary.bos()
 
         for idx, el in enumerate(batch):
             tokens[idx, 1:(el.size(0) + 1)] = el
+
+            if self.apply_eos:
+                tokens[idx, el.size(0) + 1] = self.dictionary.eos()
         
         return tokens
+
+    def collater(self, batch):
+        if isinstance(batch, list) and torch.is_tensor(batch[0]):
+            return self.collate_tensors(batch)
+        else:
+            return self.collate_dicts(batch)
+
+    def collate_dicts(self, batch: List[Dict[str, torch.tensor]]):
+        '''
+        combine sequences of the form
+        [
+            {
+                'key1': torch.tensor,
+                'key2': torch.tensor
+            },
+            {
+                'key1': torch.tensor,
+                'key2': torch.tensor
+            },
+        ]
+        into a collated form:
+        {
+            'key1': torch.tensor,
+            'key2': torch.tensor,
+        }
+        applying the padding correctly to capture different lengths
+        '''
+
+        def select_by_key(lst: List[Dict], key):
+            return [el[key] for el in lst]
+
+        return {
+            key: self.collate_tensors(
+                select_by_key(batch, key)
+            )
+            for key in batch[0].keys()
+        }
+            
         
 class InlineDictionary(Dictionary):
     @classmethod
@@ -90,11 +143,15 @@ class InlineDictionary(Dictionary):
 class RebaseT5(pl.LightningModule):
     def __init__(self, cfg):
         super(RebaseT5, self).__init__()
-        self.cfg = cfg
+        self.save_hyperparameters(cfg)
+        print('batch size', self.hparams.model.batch_size)
+        self.batch_size = self.hparams.model.batch_size
 
         self.dictionary = InlineDictionary.from_list(
             tokenization['toks']
         )
+
+        print(len(self.dictionary))
 
         t5_config=T5Config(
             vocab_size=len(self.dictionary),
@@ -106,32 +163,36 @@ class RebaseT5(pl.LightningModule):
         )
 
         self.model = T5ForConditionalGeneration(t5_config)
+        self.accuracy = torchmetrics.Accuracy()
 
     def training_step(self, batch, batch_idx):
         # input_ids, attention_mask, labels
-        import pdb; pdb.set_trace()
-        output = self.model(input_ids=batch, labels=batch)
+        output = self.model(input_ids=batch['protein'], labels=batch['dna'])
+
+        # log accuracy
+        self.log('train_acc_step', self.accuracy(output['logits'].argmax(-1), batch['dna']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
             'loss': output.loss,
-            'batch_size': batch['input_ids'].size(0)
+            'batch_size': batch['protein'].size(0)
         }
     
-    def validation_step(self, batch):
-        dataset = FastaDataset(cfg.data.protein_fasta)
-        # grab validation steps?
-        import pdb; pdb.set_trace()
+    def validation_step(self, batch, batch_idx):
+        # input_ids, attention_mask, labels
+        output = self.model(input_ids=batch['protein'], labels=batch['dna'])
+        return {
+            'loss': output.loss,
+            'batch_size': batch['protein'].size(0)
+        }
     
     def train_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
             SupervisedRebaseDataset(
-                FastaDataset(self.cfg.io.input)
+                FastaDataset(self.hparams.io.input)
             ),
             self.dictionary
         )
 
-        dataloader = DataLoader(dataset, batch_size=4, shuffle=False, num_workers=0, collate_fn=dataset.collater)
-
-        import pdb; pdb.set_trace()
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=10, collate_fn=dataset.collater)
 
         return dataloader
 
@@ -144,9 +205,9 @@ def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
 
-    trainer = pl.Trainer()
-    train_dataloader = model.train_dataloader()
-    trainer.fit(model, train_dataloader)
+    trainer = pl.Trainer(gpus=-1)
+    trainer.tune(model)
+    trainer.fit(model)
 
 if __name__ == '__main__':
     main()
