@@ -12,6 +12,14 @@ import torchmetrics
 
 from typing import List, Dict
 
+'''
+TODOs (10/17/21):
+* figure out reasonable train/valid set
+* run a few baselines in this setup to get a handle on what performnace is like
+* ESM-1b pretrained representations
+* Alphafold
+'''
+
 class SupervisedRebaseDataset(BaseWrapperDataset):
     '''
     Filters a rebased dataset for entries that have supervised labels
