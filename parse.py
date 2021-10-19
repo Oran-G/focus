@@ -54,7 +54,8 @@ def main(cfg: DictConfig) -> None:
         table = pa.Table.from_pandas(df)
         print('Total:', total)
         print('Contains DNA bind site:', binds)
-        pq.write_table(table, cfg.io.output)
+        pq.write_table(table, 'args.output')
+
 
         f.close() 
 
