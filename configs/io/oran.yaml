@@ -1,2 +1,4 @@
 input: /Users/orangoodman/dev/deeplearning/focus/data/All_Type_II_restriction_enzyme_genes_Protein.txt
 output: /Users/orangoodman/dev/deeplearning/focus/data/example.parquet
+fasta: /Users/orangoodman/dev/deeplearning/focus/data/mmseq_input.faa
+cluster: /Users/orangoodman/dev/deeplearning/focus/data/cluster.tsv
