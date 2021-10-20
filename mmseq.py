@@ -23,7 +23,7 @@ def main(cfg: DictConfig) -> None:
     '''
     os.system('python3 fasta.py')
     print('python3 fasta.py')
-    # os.system('brew install mmseqs2')
+    os.system('brew install mmseqs2')
     print('brew install mmseqs2')
     os.system(f'mmseqs createdb {cfg.io.fasta} DB')
     print(f'mmseqs createdb {cfg.io.fasta} DB')
