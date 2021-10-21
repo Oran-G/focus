@@ -36,7 +36,7 @@ def main(cfg: DictConfig) -> None:
     print('columns:', df.columns)
     print('Total:', df.shape[0])
     print(df.dropna())
-    df = df.dropna()
+    # df = df.dropna()
     records = []
     def mapper(row):
         # print(str(row[1].seq))
