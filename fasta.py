@@ -39,12 +39,15 @@ def main(cfg: DictConfig) -> None:
     df = df.dropna()
     records = []
     def mapper(row):
+        # print(str(row[1].seq))
+        # print(str(row[1][1]))
+        # quit()
         records.append(
             SeqRecord(
-                Seq(row[1].seq),
-                id=str(row[1].name),
-                name=str(row[1].name),
-                description=str(row[1].bind) if row[1].bind != None else '',
+                Seq(row[1][1]),
+                id=str(row[0]),
+                name=str(row[1][0]),
+                description=str(row[1][2]) if row[1][2] != None else '',
         ))
 
     for row in df.iterrows():

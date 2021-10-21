@@ -21,9 +21,9 @@ def main(cfg: DictConfig) -> None:
     https://github.com/soedinglab/MMseqs2
     ^^ git with documentation^^
     '''
-    os.system('python3 fasta.py')
+    # os.system('python3 fasta.py')
     print('python3 fasta.py')
-    os.system('brew install mmseqs2')
+    # os.system('brew install mmseqs2')
     print('brew install mmseqs2')
     os.system(f'mmseqs createdb {cfg.io.fasta} DB')
     print(f'mmseqs createdb {cfg.io.fasta} DB')
