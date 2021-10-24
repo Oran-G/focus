@@ -47,7 +47,7 @@ def main(cfg: DictConfig) -> None:
                 Seq(row[1][1]),
                 id=str(row[0]),
                 name=str(row[1][0]),
-                description=str(row[1][2]) if row[1][2] != None else '',
+                description=str(row[1][2]),
         ))
 
     for row in df.iterrows():
