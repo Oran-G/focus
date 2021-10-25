@@ -5,35 +5,35 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import argparse
-if __name__ == "__main__":
-    
 
-    parser = argparse.ArgumentParser(description='Proccess REBASE into parquet')
-    parser.add_argument('--input', default='~/dev/deeplearning/focus/data/All_Type_II_restriction_enzyme_genes_Protein.txt', type=str,
-                        help='Path to/name of input file')
-    parser.add_argument('--output', default='~/dev/deeplearning/focus/data/example.parquet', type=str,
-                        help='Path to/name of output file. NEEDS TO BE ".parquet"')
-    args = parser.parse_args()
-    with open(args.input, 'r') as f:
+from omegaconf import DictConfig, OmegaConf
+import hydra
+from tqdm import tqdm
+
+@hydra.main(config_path='configs', config_name='defaults')
+def main(cfg: DictConfig) -> None:
+    print(OmegaConf.to_yaml(cfg))
+    '''
+    In the meantime, you can get started on some data analysis. Make plots of the following:
+        - number of sequences in REBASE
+        - fraction with DNA labels, fraction that don’t have 
+        - what the DNA labels look like (are they all pretty similar?)
+    '''
+    with open(cfg.io.input, 'r') as f:
         coke = f.readlines()
         df = pd.DataFrame(columns=['name', 'seq', 'bind'])
         start = False
-        seq = ''
-        name = ''
-        bind = ''
-        i = 0
-        for line in coke:
+        seq, name, bind = '', '', ''
+        total, binds = 0, 0
+        for line in tqdm(coke):
             if line == '\n':
                 if start ==  True:
                     # print(seq, name, bind)
-                    df = df.append({'name':name, 'seq':seq, 'bind': bind if bind != '' else None}, ignore_index=True)
+                    df = df.append({'name':name, 'seq':seq, 'bind': bind.replace(',','') if bind != '' else None}, ignore_index=True)
                     
                     seq = ''
                     name = ''
                     bind = ''
-                    if i %1000 == 1:
-                        print(i)
-                    i+=1
                     start = False
                     
             elif line[0] == '>':
@@ -41,6 +41,9 @@ if __name__ == "__main__":
                 name = l[0].replace('>','')
                 bind = l[3]
                 start = True
+                total+=1
+                if bind !='':
+                    binds+=1
                 # print(line.split(' '))
                 # if bind >5:
                 #     quit()
@@ -49,5 +52,13 @@ if __name__ == "__main__":
                 seq+=line.replace(' ','').replace('\n','')
                 
         table = pa.Table.from_pandas(df)
+        print('Total:', total)
+        print('Contains DNA bind site:', binds)
         pq.write_table(table, 'args.output')
+
+
         f.close() 
+
+
+if __name__ == "__main__":
+    main()
