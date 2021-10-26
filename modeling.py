@@ -169,7 +169,7 @@ class RebaseT5(pl.LightningModule):
             # TODO: grab these from the config
             d_model=768,
             d_ff=self.hparams.model.d_ff,
-            num_layers=1,
+            num_layers=4,
         )
 
         self.model = T5ForConditionalGeneration(t5_config)
@@ -217,7 +217,7 @@ def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
 
-    trainer = pl.Trainer(gpus=0)
+    trainer = pl.Trainer(gpus=-1, epochs=2)
     trainer.tune(model)
     trainer.fit(model)
 
