@@ -6,3 +6,11 @@ omegaconf
 hydra
 tqdm
 hydra-core
+fairseq
+transformers
+scipy
+Bio
+torchmetrics
+matplotlib
+pytorch_lightning
+torch
