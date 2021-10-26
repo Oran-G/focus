@@ -98,18 +98,18 @@ def main(cfg: DictConfig) -> None:
 
     for row in df.iterrows():
         mapper(row)
-    SeqIO.write(records, cfg.io.train, "fasta")
+    SeqIO.write(records, f'{cfg.io.train}.fasta', "fasta")
 
 
     records = []
     for row in val_data.iterrows():
         mapper(row)
-    SeqIO.write(records, cfg.io.val, "fasta")
+    SeqIO.write(records, f'{cfg.io.val}.fasta', "fasta")
 
     records = []
     for row in test_data.iterrows():
         mapper(row)
-    SeqIO.write(records, cfg.io.test, "fasta")
+    SeqIO.write(records, f'{cfg.io.test}.fasta', "fasta")
 
 if __name__ == "__main__":
     main()

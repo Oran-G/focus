@@ -26,7 +26,7 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
     '''
     def __init__(self, dataset: FastaDataset):
         super().__init__(dataset)
-
+        # print(len(dataset))
         self.filtered_indices = []
 
         # example desc: ['>AacAA1ORF2951P', 'GATATC', '280', 'aa']
@@ -40,8 +40,10 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
 
         # filter indicies which don't have supervised labels
         for idx, (desc, seq) in enumerate(dataset):
-            if len(desc.split()) == 4 and encodes_as_dna(desc.split()[self.dna_element]):
+            # if len(desc.split()) == 4 and encodes_as_dna(desc.split()[self.dna_element]):
+            if encodes_as_dna(desc.split()[self.dna_element]):
                 self.filtered_indices.append(idx)
+        # print(len(self.filtered_indices))
     
     def __len__(self):
         return len(self.filtered_indices)
@@ -64,7 +66,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
     def __init__(self, dataset, dictionary, apply_bos=True, apply_eos=False):
         '''
-        Options to apply bos and eos tokens. Fairseq datasets will usually have eos already applied,
+        Options to apply bos and eos tokens.   will usually have eos already applied,
         but won't have bos. Hence the defaults here.
         '''
         super().__init__(dataset)
@@ -166,8 +168,8 @@ class RebaseT5(pl.LightningModule):
             decoder_start_token_id=self.dictionary.bos(),
             # TODO: grab these from the config
             d_model=768,
-            d_ff=768,
-            num_layers=4,
+            d_ff=self.hparams.model.d_ff,
+            num_layers=1,
         )
 
         self.model = T5ForConditionalGeneration(t5_config)
@@ -193,19 +195,21 @@ class RebaseT5(pl.LightningModule):
         }
     
     def train_dataloader(self):
+        # print(self.hparams.io.train)
         dataset = EncodedFastaDatasetWrapper(
             SupervisedRebaseDataset(
-                FastaDataset(self.hparams.io.input)
+                FastaDataset(self.hparams.io.train)
             ),
             self.dictionary
         )
+        # print('length of dataset', len(dataset))
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=10, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
 
         return dataloader
 
     def configure_optimizers(self):
-        opt = torch.optim.AdamW(self.model.parameters(), lr=1e-5)
+        opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
         return opt
 
 @hydra.main(config_path='configs', config_name='defaults')
@@ -213,7 +217,7 @@ def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
 
-    trainer = pl.Trainer(gpus=-1)
+    trainer = pl.Trainer(gpus=0)
     trainer.tune(model)
     trainer.fit(model)
 
