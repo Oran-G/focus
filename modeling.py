@@ -41,7 +41,7 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
         # filter indicies which don't have supervised labels
         for idx, (desc, seq) in enumerate(dataset):
             # if len(desc.split()) == 4 and encodes_as_dna(desc.split()[self.dna_element]):
-            if encodes_as_dna(desc.split()[self.dna_element]):
+            if len(desc.split()) >= 2 encodes_as_dna(desc.split()[self.dna_element]):
                 self.filtered_indices.append(idx)
         # print(len(self.filtered_indices))
     
