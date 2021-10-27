@@ -217,7 +217,7 @@ def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
 
-    trainer = pl.Trainer(gpus=-1, epochs=2)
+    trainer = pl.Trainer(gpus=-1, limit_train_batches=2)
     trainer.tune(model)
     trainer.fit(model)
 
