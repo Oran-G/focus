@@ -2,7 +2,7 @@ import torch
 import pytorch_lightning as pl
 from transformers import T5Config, T5ForConditionalGeneration
 from fairseq.data import FastaDataset, EncodedFastaDataset, Dictionary, BaseWrapperDataset
-from constants import tokenization
+from constants import tokenization, neucleotides
 from torch.utils.data import DataLoader
 
 from omegaconf import DictConfig, OmegaConf
@@ -34,16 +34,19 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
 
         def encodes_as_dna(s: str):
             for c in s:
-                if c not in ['A', 'T', 'C', 'G']:
+                if c not in list(neucleotides.keys()):
                     return False
             return True
 
         # filter indicies which don't have supervised labels
         for idx, (desc, seq) in enumerate(dataset):
             # if len(desc.split()) == 4 and encodes_as_dna(desc.split()[self.dna_element]):
-            if len(desc.split()) >= 2 and encodes_as_dna(desc.split()[self.dna_element]):
+            if len(desc.split(' ')) >= 2 and encodes_as_dna(desc.split(' ')[self.dna_element]):
                 self.filtered_indices.append(idx)
-        # print(len(self.filtered_indices))
+        print(len(self.dataset[0]))
+        print(self.dataset[0])
+        print('size:', len(self.filtered_indices))
+
     
     def __len__(self):
         return len(self.filtered_indices)
@@ -52,13 +55,29 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
         # translate to our filtered indices
         new_idx = self.filtered_indices[idx]
         desc, seq = self.dataset[new_idx]
+        try:
+            return {
+                'protein': self.dataset[new_idx][1].replace(' ', ''),
+                'dna': self.dataset[new_idx][0].split(' ')[self.dna_element]
+            }     
+        except IndexError:
+            # print('hello')
+            # print(self.dataset[new_idx][0].split(' '))
+            # # print(self.dataset[new_idx][0])
+            # print(self.dataset[new_idx])
 
-        return {
-            'protein': seq.replace(' ', ''),
-            'dna': desc.split()[self.dna_element]
-        }        
+            # print(new_idx)
+            # print({
+            #     'protein': self.dataset[new_idx][1].replace(' ', ''),
+            #     'dna': self.dataset[new_idx][0].split(' ')[self.dna_element]
+            # })
+            return {
+                'protein': self.dataset[new_idx][1].replace(' ', ''),
+                'dna': self.dataset[new_idx][0].split(' ')[self.dna_element]
+            }
+            # quit()
+            
         
-
 class EncodedFastaDatasetWrapper(BaseWrapperDataset):
     """
     EncodedFastaDataset implemented as a wrapper
@@ -80,7 +99,8 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             k: self.dictionary.encode_line(v, line_tokenizer=list).long()
             for k, v in self.dataset[idx].items()
         }
-
+    def __len__(self):
+        return len(self.dataset)
     def collate_tensors(self, batch: List[torch.tensor]):
         batch_size = len(batch)
         max_len = max(el.size(0) for el in batch)
@@ -169,16 +189,22 @@ class RebaseT5(pl.LightningModule):
             # TODO: grab these from the config
             d_model=768,
             d_ff=self.hparams.model.d_ff,
-            num_layers=4,
+            num_layers=1,
         )
 
         self.model = T5ForConditionalGeneration(t5_config)
         self.accuracy = torchmetrics.Accuracy()
+        print('initialized')
 
     def training_step(self, batch, batch_idx):
         # input_ids, attention_mask, labels
-        output = self.model(input_ids=batch['protein'], labels=batch['dna'])
+        # torch.grad(   )
 
+        output = self.model(input_ids=batch['protein'], labels=batch['dna'])
+        # print(batch)
+        # print(output['logits'].argmax(-1))
+        # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
+        # quit()
         # log accuracy
         self.log('train_acc_step', self.accuracy(output['logits'].argmax(-1), batch['dna']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
@@ -204,9 +230,22 @@ class RebaseT5(pl.LightningModule):
         )
         # print('length of dataset', len(dataset))
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader
+    # def val_dataloader(self):
+    #     # print(self.hparams.io.train)
+    #     dataset = EncodedFastaDatasetWrapper(
+    #         SupervisedRebaseDataset(
+    #             FastaDataset(self.hparams.io.val)
+    #         ),
+    #         self.dictionary
+    #     )
+    #     # print('length of dataset', len(dataset))
+
+    #     dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
+
+    #     return dataloader
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
@@ -217,7 +256,11 @@ def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
 
-    trainer = pl.Trainer(gpus=-1, limit_train_batches=2)
+    trainer = pl.Trainer(gpus=-1, 
+        # limit_train_batches=2,
+        # limit_train_epochs=3
+
+        )
     trainer.tune(model)
     trainer.fit(model)
 
