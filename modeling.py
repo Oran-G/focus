@@ -199,12 +199,39 @@ class RebaseT5(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         # input_ids, attention_mask, labels
         # torch.grad(   )
-
-        output = self.model(input_ids=batch['protein'], labels=batch['dna'])
-        # print(batch)
-        # print(output['logits'].argmax(-1))
-        # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
+        mask = batch['protein'].clone()
+        def func(x):
+            if x == self.dictionary.pad():
+                return 0
+            return 1
+            
+                
+        
+        mask = mask.apply_(func)
+        # masks =  mask.clone()
+        # print(mask)
+        # print(mask.shape)
+        # for q in range(mask.shape[0]):
+        #     for i in range(mask.shape[1]):
+        #         # for j in range(mask.shape[2]):
+        #         if mask[q][i] == True:
+        #             # print(mask[q][i])
+        #             mask[q][i] = 0
+        #         else:
+        #             mask[q][i] = 0
+        # mask[0][0] = 1
+        # # mask = mask[mask==True] = 1
+        # # mask = mask[mask==False] = 0
+        # print(mask)
         # quit()
+        print(mask)
+        output = self.model(input_ids=batch['protein'], attention_mask=mask, labels=batch['dna'])
+        print(batch)
+        print(mask)
+        # print(1 if batch['protein'] != self.dictionary.pad() else 0)
+        print(output['logits'].argmax(-1))
+        print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
+        quit()
         # log accuracy
         self.log('train_acc_step', self.accuracy(output['logits'].argmax(-1), batch['dna']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
@@ -256,7 +283,7 @@ def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
 
-    trainer = pl.Trainer(gpus=-1, 
+    trainer = pl.Trainer(gpus=0, 
         # limit_train_batches=2,
         # limit_train_epochs=3
 
