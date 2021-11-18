@@ -207,7 +207,7 @@ class RebaseT5(pl.LightningModule):
             
                 
         
-        mask = mask.apply_(func)
+        mask = mask.to('cpu').apply_(func).to(self.device)
         # masks =  mask.clone()
         # print(mask)
         # print(mask.shape)
@@ -224,14 +224,14 @@ class RebaseT5(pl.LightningModule):
         # # mask = mask[mask==False] = 0
         # print(mask)
         # quit()
-        print(mask)
+        # print(mask)
         output = self.model(input_ids=batch['protein'], attention_mask=mask, labels=batch['dna'])
-        print(batch)
-        print(mask)
-        # print(1 if batch['protein'] != self.dictionary.pad() else 0)
-        print(output['logits'].argmax(-1))
-        print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
-        quit()
+        # print(batch)
+        # # print(mask)
+        # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
+        # print(output['logits'].argmax(-1))
+        # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
+        # quit()
         # log accuracy
         self.log('train_acc_step', self.accuracy(output['logits'].argmax(-1), batch['dna']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
@@ -283,7 +283,7 @@ def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
 
-    trainer = pl.Trainer(gpus=0, 
+    trainer = pl.Trainer(gpus=-1, 
         # limit_train_batches=2,
         # limit_train_epochs=3
 
