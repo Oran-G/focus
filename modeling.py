@@ -23,6 +23,16 @@ TODOs (10/17/21):
 * Alphafold
 '''
 
+class CSVDataset(torch.utils.data.dataset):
+    def __init__(self, csv_path):
+        self.df = df.read_csv(csv_path)
+    
+    def __getitem__(self, idx):
+        return self.df[idx].to_dict()
+    
+    def __len__(self):
+        return len(self.df)
+
 class SupervisedRebaseDataset(BaseWrapperDataset):
     '''
     Filters a rebased dataset for entries that have supervised labels
@@ -254,7 +264,9 @@ class RebaseT5(pl.LightningModule):
         # print(self.hparams.io.train)
         dataset = EncodedFastaDatasetWrapper(
             SupervisedRebaseDataset(
+                # TODO(oran): change this to a CSVDataset
                 FastaDataset(self.hparams.io.train)
+                #, split='train' # (or 'valid')
             ),
             self.dictionary
         )

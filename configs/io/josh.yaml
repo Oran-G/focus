@@ -1,2 +1,7 @@
-input: /scratch/jam1657/rebase/downloaded/All_Type_II_restriction_enzyme_genes_Protein
+input: /scratch/jam1657/rebase/downloaded/All_Type_II_restriction_enzyme_genes_Protein.fasta
 output: /scratch/jam1657/rebase/generated/All_Type_II_restriction_enzyme_genes_Protein.parquet
+fasta: /scratch/jam1657/rebase/generated/mmseq_input.faa
+cluster: /scratch/jam1657/rebase/generated/cluster.parquet
+train: /scratch/jam1657/rebase/generated/train-labeled
+val: /scratch/jam1657/rebase/generated/val-labeled
+test: /scratch/jam1657/rebase/generated/test-labeled
