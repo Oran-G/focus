@@ -285,7 +285,7 @@ class RebaseT5(pl.LightningModule):
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
-    wandb_logger = WandbLogger(project="MNIST")
+    wandb_logger = WandbLogger(project="Focus")
 
     trainer = pl.Trainer(gpus=0, 
         logger=wandb_logger,
