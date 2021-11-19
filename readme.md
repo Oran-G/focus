@@ -28,7 +28,7 @@ exit
 
 In code repo:
 > pip install -r requirments.txt
-> python3 parse.py --input (path/name to data) --output (path/name of output.parquet)
+> python3 parse.py
 > create data paths in .yaml - must have all paths that are in oran.yaml
 > python3 fasta.py
 > python3 mmseq.py
