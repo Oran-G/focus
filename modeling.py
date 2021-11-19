@@ -11,6 +11,9 @@ import hydra
 import torchmetrics
 
 from typing import List, Dict
+from pytorch_lightning.loggers import WandbLogger
+
+
 
 '''
 TODOs (10/17/21):
@@ -282,10 +285,13 @@ class RebaseT5(pl.LightningModule):
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
+    wandb_logger = WandbLogger(project="MNIST")
 
-    trainer = pl.Trainer(gpus=-1, 
+    trainer = pl.Trainer(gpus=0, 
+        logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
+
 
         )
     trainer.tune(model)
