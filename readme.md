@@ -33,3 +33,12 @@ In code repo:
 > python3 fasta.py
 > python3 mmseq.py
 > python3 split.py
+# Updated
+# REBASE data download and parse
+### Download data from FTP
+Update io yaml to have 
+finput:  (fasta, input file from rebase)
+final: (csv, path to final file)
+temp: (tsv, path of temporary clustering data that can be later removed)
+then run 
+> python3 to_csv.py
