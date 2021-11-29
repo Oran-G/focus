@@ -3,7 +3,7 @@ import pytorch_lightning as pl
 from transformers import T5Config, T5ForConditionalGeneration
 from fairseq.data import FastaDataset, EncodedFastaDataset, Dictionary, BaseWrapperDataset
 from constants import tokenization, neucleotides
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from omegaconf import DictConfig, OmegaConf
 import hydra
@@ -13,7 +13,8 @@ import torchmetrics
 from typing import List, Dict
 from pytorch_lightning.loggers import WandbLogger
 
-
+from pandas import DataFrame as df
+import pandas as pd
 
 '''
 TODOs (10/17/21):
@@ -23,15 +24,31 @@ TODOs (10/17/21):
 * Alphafold
 '''
 
-class CSVDataset(torch.utils.data.dataset):
-    def __init__(self, csv_path):
-        self.df = df.read_csv(csv_path)
+class CSVDataset(Dataset):
+    def __init__(self, csv_path, split, split_seed=42, supervised=True):
+        super().__init__()
+        self.df = pd.read_csv(csv_path)
+        print(self.df)
+        print(self.df['seq'][0])
+        if supervised:
+            self.df = self.df.dropna()
+        self.data = self.split(split)[['seq', 'bind']].to_dict('records')
     
     def __getitem__(self, idx):
-        return self.df[idx].to_dict()
+        return self.data[idx]
     
     def __len__(self):
         return len(self.df)
+    
+    def split(self, split):
+        if split.lower() == 'train':
+            return self.df[self.df['split'] == 0]
+        elif split.lower() == 'val':
+            return self.df[self.df['split'] == 1]
+        elif split.lower() == 'test':
+            return self.df[self.df['split'] == 2]
+
+
 
 class SupervisedRebaseDataset(BaseWrapperDataset):
     '''
@@ -70,8 +87,8 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
         desc, seq = self.dataset[new_idx]
         try:
             return {
-                'protein': self.dataset[new_idx][1].replace(' ', ''),
-                'dna': self.dataset[new_idx][0].split(' ')[self.dna_element]
+                'seq': self.dataset[new_idx][1].replace(' ', ''),
+                'bind': self.dataset[new_idx][0].split(' ')[self.dna_element]
             }     
         except IndexError:
             # print('hello')
@@ -85,12 +102,13 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
             #     'dna': self.dataset[new_idx][0].split(' ')[self.dna_element]
             # })
             return {
-                'protein': self.dataset[new_idx][1].replace(' ', ''),
-                'dna': self.dataset[new_idx][0].split(' ')[self.dna_element]
+                'seq': self.dataset[new_idx][1].replace(' ', ''),
+                'bind': self.dataset[new_idx][0].split(' ')[self.dna_element]
             }
             # quit()
             
-        
+
+
 class EncodedFastaDatasetWrapper(BaseWrapperDataset):
     """
     EncodedFastaDataset implemented as a wrapper
@@ -193,6 +211,7 @@ class RebaseT5(pl.LightningModule):
         self.dictionary = InlineDictionary.from_list(
             tokenization['toks']
         )
+        self.cfg = cfg
 
         print(len(self.dictionary))
 
@@ -212,15 +231,17 @@ class RebaseT5(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         # input_ids, attention_mask, labels
         # torch.grad(   )
-        mask = batch['protein'].clone()
-        def func(x):
-            if x == self.dictionary.pad():
-                return 0
-            return 1
-            
+        # mask = batch['protein'].clone()
+        # def func(x):
+        #     if x == self.dictionary.pad():
+        #         return 0
+        #     return 1
+        mask = (batch['seq'] != self.dictionary.pad()).int()
                 
         
-        mask = mask.to('cpu').apply_(func).to(self.device)
+        # mask = mask.to('cpu').apply_(func).to(self.device)
+        # print(mask)
+        # quit()
         # masks =  mask.clone()
         # print(mask)
         # print(mask.shape)
@@ -238,36 +259,32 @@ class RebaseT5(pl.LightningModule):
         # print(mask)
         # quit()
         # print(mask)
-        output = self.model(input_ids=batch['protein'], attention_mask=mask, labels=batch['dna'])
-        # print(batch)
+        output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
+        # print(batch) 
         # # print(mask)
         # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
         # print(output['logits'].argmax(-1))
         # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
         # quit()
         # log accuracy
-        self.log('train_acc_step', self.accuracy(output['logits'].argmax(-1), batch['dna']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_acc_step', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
             'loss': output.loss,
-            'batch_size': batch['protein'].size(0)
+            'batch_size': batch['seq'].size(0)
         }
     
     def validation_step(self, batch, batch_idx):
         # input_ids, attention_mask, labels
-        output = self.model(input_ids=batch['protein'], labels=batch['dna'])
+        output = self.model(input_ids=batch['seq'], labels=batch['bind'])
         return {
             'loss': output.loss,
-            'batch_size': batch['protein'].size(0)
+            'batch_size': batch['seq'].size(0)
         }
     
     def train_dataloader(self):
         # print(self.hparams.io.train)
         dataset = EncodedFastaDatasetWrapper(
-            SupervisedRebaseDataset(
-                # TODO(oran): change this to a CSVDataset
-                FastaDataset(self.hparams.io.train)
-                #, split='train' # (or 'valid')
-            ),
+            CSVDataset(self.cfg.io.final, 'train'),
             self.dictionary
         )
         # print('length of dataset', len(dataset))
