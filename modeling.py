@@ -28,8 +28,8 @@ class CSVDataset(Dataset):
     def __init__(self, csv_path, split, split_seed=42, supervised=True):
         super().__init__()
         self.df = pd.read_csv(csv_path)
-        print(self.df)
-        print(self.df['seq'][0])
+        # print(self.df)
+        # print(self.df['seq'][0])
         if supervised:
             self.df = self.df.dropna()
         self.data = self.split(split)[['seq', 'bind']].to_dict('records')
@@ -73,9 +73,9 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
             # if len(desc.split()) == 4 and encodes_as_dna(desc.split()[self.dna_element]):
             if len(desc.split(' ')) >= 2 and encodes_as_dna(desc.split(' ')[self.dna_element]):
                 self.filtered_indices.append(idx)
-        print(len(self.dataset[0]))
-        print(self.dataset[0])
-        print('size:', len(self.filtered_indices))
+        # print(len(self.dataset[0]))
+        # print(self.dataset[0])
+        # print('size:', len(self.filtered_indices))
 
     
     def __len__(self):
@@ -229,6 +229,7 @@ class RebaseT5(pl.LightningModule):
         print('initialized')
 
     def training_step(self, batch, batch_idx):
+        torch.cuda.empty_cache()
         # input_ids, attention_mask, labels
         # torch.grad(   )
         # mask = batch['protein'].clone()
@@ -236,8 +237,8 @@ class RebaseT5(pl.LightningModule):
         #     if x == self.dictionary.pad():
         #         return 0
         #     return 1
-        mask = (batch['seq'] != self.dictionary.pad()).int()
-                
+        # mask = (batch['seq'] != self.dictionary.pad()).int()
+        
         
         # mask = mask.to('cpu').apply_(func).to(self.device)
         # print(mask)
@@ -259,7 +260,7 @@ class RebaseT5(pl.LightningModule):
         # print(mask)
         # quit()
         # print(mask)
-        output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
+        output = self.model(input_ids=batch['seq'], labels=batch['bind'])
         # print(batch) 
         # # print(mask)
         # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
@@ -289,7 +290,7 @@ class RebaseT5(pl.LightningModule):
         )
         # print('length of dataset', len(dataset))
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
 
         return dataloader
     # def val_dataloader(self):
@@ -316,10 +317,11 @@ def main(cfg: DictConfig) -> None:
     model = RebaseT5(cfg)
     wandb_logger = WandbLogger(project="Focus")
 
-    trainer = pl.Trainer(gpus=0, 
+    trainer = pl.Trainer(gpus=1, 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
+        # auto_scale_batch_size=True
 
 
         )
