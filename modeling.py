@@ -15,6 +15,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 from pandas import DataFrame as df
 import pandas as pd
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 '''
 TODOs (10/17/21):
@@ -33,12 +34,13 @@ class CSVDataset(Dataset):
         if supervised:
             self.df = self.df.dropna()
         self.data = self.split(split)[['seq', 'bind']].to_dict('records')
+        self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
     
     def __getitem__(self, idx):
         return self.data[idx]
     
     def __len__(self):
-        return len(self.df)
+        return len(self.data)
     
     def split(self, split):
         if split.lower() == 'train':
@@ -229,7 +231,7 @@ class RebaseT5(pl.LightningModule):
         print('initialized')
 
     def training_step(self, batch, batch_idx):
-        torch.cuda.empty_cache()
+        
         # input_ids, attention_mask, labels
         # torch.grad(   )
         # mask = batch['protein'].clone()
@@ -237,30 +239,16 @@ class RebaseT5(pl.LightningModule):
         #     if x == self.dictionary.pad():
         #         return 0
         #     return 1
-        # mask = (batch['seq'] != self.dictionary.pad()).int()
+        mask = (batch['seq'] != self.dictionary.pad()).int()
         
+            
+            
         
-        # mask = mask.to('cpu').apply_(func).to(self.device)
-        # print(mask)
-        # quit()
-        # masks =  mask.clone()
-        # print(mask)
-        # print(mask.shape)
-        # for q in range(mask.shape[0]):
-        #     for i in range(mask.shape[1]):
-        #         # for j in range(mask.shape[2]):
-        #         if mask[q][i] == True:
-        #             # print(mask[q][i])
-        #             mask[q][i] = 0
-        #         else:
-        #             mask[q][i] = 0
-        # mask[0][0] = 1
-        # # mask = mask[mask==True] = 1
-        # # mask = mask[mask==False] = 0
-        # print(mask)
-        # quit()
-        # print(mask)
-        output = self.model(input_ids=batch['seq'], labels=batch['bind'])
+       
+        # print(max([batch['bind'][i] for i in range(batch['bind'].shape[0])]))
+        output = self.model(input_ids=batch['seq'], attention_mask=mask.to(self.device), labels=batch['bind'])
+        if batch_idx == 0:
+            print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         # print(batch) 
         # # print(mask)
         # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
@@ -268,7 +256,9 @@ class RebaseT5(pl.LightningModule):
         # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
         # quit()
         # log accuracy
-        self.log('train_acc_step', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_loss', float(output.loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        
         return {
             'loss': output.loss,
             'batch_size': batch['seq'].size(0)
@@ -276,7 +266,24 @@ class RebaseT5(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         # input_ids, attention_mask, labels
-        output = self.model(input_ids=batch['seq'], labels=batch['bind'])
+        mask = (batch['seq'] != self.dictionary.pad()).int()
+        
+            
+       
+        # print(max([batch['bind'][i] for i in range(batch['bind'].shape[0])]))
+        output = self.model(input_ids=batch['seq'], attention_mask=mask.to(self.device), labels=batch['bind'])
+        if batch_idx == 0:
+            print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
+        # print(batch) 
+        # # print(mask)
+        # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
+        # print(output['logits'].argmax(-1))
+        # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
+        # quit()
+        # log accuracy
+        self.log('val_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        
         return {
             'loss': output.loss,
             'batch_size': batch['seq'].size(0)
@@ -286,6 +293,7 @@ class RebaseT5(pl.LightningModule):
         # print(self.hparams.io.train)
         dataset = EncodedFastaDatasetWrapper(
             CSVDataset(self.cfg.io.final, 'train'),
+
             self.dictionary
         )
         # print('length of dataset', len(dataset))
@@ -293,7 +301,17 @@ class RebaseT5(pl.LightningModule):
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
 
         return dataloader
-    # def val_dataloader(self):
+    def val_dataloader(self):
+        dataset = EncodedFastaDatasetWrapper(
+            CSVDataset(self.cfg.io.final, 'val'),
+
+            self.dictionary
+        )
+        # print('length of dataset', len(dataset))
+
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
+
+        return dataloader 
     #     # print(self.hparams.io.train)
     #     dataset = EncodedFastaDatasetWrapper(
     #         SupervisedRebaseDataset(
@@ -315,18 +333,33 @@ class RebaseT5(pl.LightningModule):
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
+    max1 = 0
+    # for idx, batch in enumerate(model.train_dataloader()):
+    #     if batch['seq'].shape[1] >max1:
+    #         max1 = batch['seq'].shape[1]
+    #         maxidx = idx
+    #     if idx >= 710:
+    #         print(batch['seq'].shape[1], max1)
+    #     if idx == 720:
+    #         # print(max1)
+    #         print(maxidx)
+
+    #         import pdb; pdb.set_trace()
     wandb_logger = WandbLogger(project="Focus")
+    checkpoint_callback = ModelCheckpoint(monitor="train_acc") 
 
     trainer = pl.Trainer(gpus=1, 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
-        # auto_scale_batch_size=True
+        # auto_scale_batch_size=True,
+        callbacks=[checkpoint_callback]
 
 
         )
     trainer.tune(model)
     trainer.fit(model)
+    print(max(len(batch['seq'][0]) for idx, batch in model.train_dataloader()))
 
 if __name__ == '__main__':
     main()
