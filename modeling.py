@@ -4,6 +4,7 @@ from transformers import T5Config, T5ForConditionalGeneration
 from fairseq.data import FastaDataset, EncodedFastaDataset, Dictionary, BaseWrapperDataset
 from constants import tokenization, neucleotides
 from torch.utils.data import DataLoader, Dataset
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from omegaconf import DictConfig, OmegaConf
 import hydra
@@ -272,8 +273,8 @@ class RebaseT5(pl.LightningModule):
        
         # print(max([batch['bind'][i] for i in range(batch['bind'].shape[0])]))
         output = self.model(input_ids=batch['seq'], attention_mask=mask.to(self.device), labels=batch['bind'])
-        if batch_idx == 0:
-            print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
+        # if batch_idx == 0:
+        #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         # print(batch) 
         # # print(mask)
         # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
@@ -327,7 +328,16 @@ class RebaseT5(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
-        return opt
+        return {
+            "optimizer": opt,
+            "lr_scheduler": {
+                "scheduler": ReduceLROnPlateau(opt, patience=3, verbose=True),
+                "monitor": "train_loss",
+                "frequency": 1
+                # If "monitor" references validation metrics, then "frequency" should be set to a
+                # multiple of "trainer.check_val_every_n_epoch".
+            },
+        }
 
 @hydra.main(config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
@@ -348,7 +358,7 @@ def main(cfg: DictConfig) -> None:
     wandb_logger = WandbLogger(project="Focus")
     checkpoint_callback = ModelCheckpoint(monitor="train_acc") 
 
-    trainer = pl.Trainer(gpus=1, 
+    trainer = pl.Trainer(gpus=0, 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
