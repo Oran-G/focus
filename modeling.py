@@ -36,6 +36,7 @@ class CSVDataset(Dataset):
             self.df = self.df.dropna()
         self.data = self.split(split)[['seq', 'bind']].to_dict('records')
         self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
+        self.data =self.data[:1]
     
     def __getitem__(self, idx):
         return self.data[idx]
@@ -215,6 +216,7 @@ class RebaseT5(pl.LightningModule):
             tokenization['toks']
         )
         self.cfg = cfg
+        
 
         print(len(self.dictionary))
 
@@ -248,8 +250,7 @@ class RebaseT5(pl.LightningModule):
        
         # print(max([batch['bind'][i] for i in range(batch['bind'].shape[0])]))
         output = self.model(input_ids=batch['seq'], attention_mask=mask.to(self.device), labels=batch['bind'])
-        if batch_idx == 0:
-            print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
+        
         # print(batch) 
         # # print(mask)
         # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
@@ -282,6 +283,8 @@ class RebaseT5(pl.LightningModule):
         # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
         # quit()
         # log accuracy
+        if batch_idx == 0 and self.current_epoch%100 == 0:
+            print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         self.log('val_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
@@ -331,8 +334,8 @@ class RebaseT5(pl.LightningModule):
         return {
             "optimizer": opt,
             "lr_scheduler": {
-                "scheduler": ReduceLROnPlateau(opt, patience=3, verbose=True),
-                "monitor": "train_loss",
+                "scheduler": ReduceLROnPlateau(opt, patience=150, verbose=True),
+                "monitor": "val_acc",
                 "frequency": 1
                 # If "monitor" references validation metrics, then "frequency" should be set to a
                 # multiple of "trainer.check_val_every_n_epoch".
@@ -358,7 +361,7 @@ def main(cfg: DictConfig) -> None:
     wandb_logger = WandbLogger(project="Focus")
     checkpoint_callback = ModelCheckpoint(monitor="train_acc") 
 
-    trainer = pl.Trainer(gpus=0, 
+    trainer = pl.Trainer(gpus=1, 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
