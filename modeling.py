@@ -242,16 +242,24 @@ class RebaseT5(pl.LightningModule):
         #     if x == self.dictionary.pad():
         #         return 0
         #     return 1
-        mask = (batch['seq'] != self.dictionary.pad()).int()
+        mask = (batch['seq'] == self.dictionary.pad()).int()
+        # print(batch)
+        # print(mask)
+        # quit()
         
             
             
         
        
         # print(max([batch['bind'][i] for i in range(batch['bind'].shape[0])]))
-        output = self.model(input_ids=batch['seq'], attention_mask=mask.to(self.device), labels=batch['bind'])
+        output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
         
         # print(batch) 
+
+        if batch_idx == 0 and self.current_epoch%1000 == 0:
+        # if True:
+            print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
+            print(self.model.state_dict()['lm_head.weight'])
         # # print(mask)
         # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
         # print(output['logits'].argmax(-1))
@@ -268,12 +276,12 @@ class RebaseT5(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         # input_ids, attention_mask, labels
-        mask = (batch['seq'] != self.dictionary.pad()).int()
+        mask = (batch['seq'] == self.dictionary.pad()).int()
         
             
        
         # print(max([batch['bind'][i] for i in range(batch['bind'].shape[0])]))
-        output = self.model(input_ids=batch['seq'], attention_mask=mask.to(self.device), labels=batch['bind'])
+        output = self.model(input_ids=batch['seq'], attention_mask=mask,  labels=batch['bind'])
         # if batch_idx == 0:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         # print(batch) 
@@ -283,8 +291,10 @@ class RebaseT5(pl.LightningModule):
         # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
         # quit()
         # log accuracy
-        if batch_idx == 0 and self.current_epoch%100 == 0:
+        # if batch_idx == 0 and self.current_epoch%500 == 0:
+        if True:
             print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
+            print(self.model.state_dict()['lm_head.weight'])
         self.log('val_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
@@ -298,7 +308,8 @@ class RebaseT5(pl.LightningModule):
         dataset = EncodedFastaDatasetWrapper(
             CSVDataset(self.cfg.io.final, 'train'),
 
-            self.dictionary
+            self.dictionary,
+            # apply_eos=True
         )
         # print('length of dataset', len(dataset))
 
@@ -307,9 +318,9 @@ class RebaseT5(pl.LightningModule):
         return dataloader
     def val_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
-            CSVDataset(self.cfg.io.final, 'val'),
-
-            self.dictionary
+            CSVDataset(self.cfg.io.final, 'train'),
+            self.dictionary,
+            # apply_eos=True
         )
         # print('length of dataset', len(dataset))
 
@@ -334,8 +345,8 @@ class RebaseT5(pl.LightningModule):
         return {
             "optimizer": opt,
             "lr_scheduler": {
-                "scheduler": ReduceLROnPlateau(opt, patience=150, verbose=True),
-                "monitor": "val_acc",
+                "scheduler": ReduceLROnPlateau(opt, patience=1500, verbose=True),
+                "monitor": "train_acc",
                 "frequency": 1
                 # If "monitor" references validation metrics, then "frequency" should be set to a
                 # multiple of "trainer.check_val_every_n_epoch".
@@ -366,7 +377,9 @@ def main(cfg: DictConfig) -> None:
         # limit_train_batches=2,
         # limit_train_epochs=3
         # auto_scale_batch_size=True,
-        callbacks=[checkpoint_callback]
+        callbacks=[checkpoint_callback],
+        check_val_every_n_epoch=1000,
+        max_epochs=100000
 
 
         )
