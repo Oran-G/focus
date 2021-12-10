@@ -36,10 +36,10 @@ class CSVDataset(Dataset):
             self.df = self.df.dropna()
         self.data = self.split(split)[['seq', 'bind']].to_dict('records')
         self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
-        self.data =self.data[:1]
+        self.data =self.data
     
     def __getitem__(self, idx):
-        return self.data[idx]
+        return self.data[idx % 10]
     
     def __len__(self):
         return len(self.data)
@@ -129,9 +129,9 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         self.apply_eos = apply_eos
 
     def __getitem__(self, idx):
-        desc, seq = self.dataset[idx]
+        # desc, seq = self.dataset[idx]
         return {
-            k: self.dictionary.encode_line(v, line_tokenizer=list).long()
+            k: self.dictionary.encode_line(v, line_tokenizer=list, append_eos=False).long()
             for k, v in self.dataset[idx].items()
         }
     def __len__(self):
@@ -151,10 +151,11 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             tokens[:, 0] = self.dictionary.bos()
 
         for idx, el in enumerate(batch):
-            tokens[idx, 1:(el.size(0) + 1)] = el
+            tokens[idx, int(self.apply_bos):(el.size(0) + int(self.apply_bos))] = el
 
+            # import pdb; pdb.set_trace()
             if self.apply_eos:
-                tokens[idx, el.size(0) + 1] = self.dictionary.eos()
+                tokens[idx, el.size(0) + int(self.apply_bos)] = self.dictionary.eos()
         
         return tokens
 
@@ -222,18 +223,22 @@ class RebaseT5(pl.LightningModule):
 
         t5_config=T5Config(
             vocab_size=len(self.dictionary),
-            decoder_start_token_id=self.dictionary.bos(),
+            decoder_start_token_id=self.dictionary.pad(),
             # TODO: grab these from the config
-            d_model=768,
+            d_model=self.hparams.model.d_model,
             d_ff=self.hparams.model.d_ff,
-            num_layers=1,
+            num_layers=2,
+            pad_token_id=self.dictionary.pad(),
+            eos_token_id=self.dictionary.eos(),
         )
 
         self.model = T5ForConditionalGeneration(t5_config)
-        self.accuracy = torchmetrics.Accuracy()
+        self.accuracy = torchmetrics.Accuracy(ignore_index=-100)
         print('initialized')
 
     def training_step(self, batch, batch_idx):
+        label_mask = (batch['bind'] == self.dictionary.pad())
+        batch['bind'][label_mask] = -100
         
         # input_ids, attention_mask, labels
         # torch.grad(   )
@@ -242,7 +247,9 @@ class RebaseT5(pl.LightningModule):
         #     if x == self.dictionary.pad():
         #         return 0
         #     return 1
-        mask = (batch['seq'] == self.dictionary.pad()).int()
+        # import pdb; pdb.set_trace()
+        # 1 for tokens that are not masked; 0 for tokens that are masked
+        mask = (batch['seq'] != self.dictionary.pad()).int()
         # print(batch)
         # print(mask)
         # quit()
@@ -256,6 +263,9 @@ class RebaseT5(pl.LightningModule):
         
         # print(batch) 
 
+        if batch_idx == 1000:
+            import pdb; pdb.set_trace()
+
         if batch_idx == 0 and self.current_epoch%1000 == 0:
         # if True:
             print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
@@ -266,7 +276,7 @@ class RebaseT5(pl.LightningModule):
         # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
         # quit()
         # log accuracy
-        self.log('train_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        # self.log('train_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('train_loss', float(output.loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         return {
@@ -275,8 +285,23 @@ class RebaseT5(pl.LightningModule):
         }
     
     def validation_step(self, batch, batch_idx):
+        label_mask = (batch['bind'] == self.dictionary.pad())
+        batch['bind'][label_mask] = -100
+        
         # input_ids, attention_mask, labels
-        mask = (batch['seq'] == self.dictionary.pad()).int()
+        # torch.grad(   )
+        # mask = batch['protein'].clone()
+        # def func(x):
+        #     if x == self.dictionary.pad():
+        #         return 0
+        #     return 1
+        # import pdb; pdb.set_trace()
+        # 1 for tokens that are not masked; 0 for tokens that are masked
+        mask = (batch['seq'] != self.dictionary.pad()).int()
+        # print(batch)
+        # print(mask)
+        # quit()
+        
         
             
        
@@ -295,7 +320,7 @@ class RebaseT5(pl.LightningModule):
         if True:
             print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
             print(self.model.state_dict()['lm_head.weight'])
-        self.log('val_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
         return {
@@ -309,22 +334,25 @@ class RebaseT5(pl.LightningModule):
             CSVDataset(self.cfg.io.final, 'train'),
 
             self.dictionary,
-            # apply_eos=True
+            apply_eos=True,
+            apply_bos=False,
         )
+        import pdb; pdb.set_trace()
         # print('length of dataset', len(dataset))
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader
     def val_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
             CSVDataset(self.cfg.io.final, 'train'),
             self.dictionary,
-            # apply_eos=True
+            apply_eos=True,
+            apply_bos=False,
         )
         # print('length of dataset', len(dataset))
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader 
     #     # print(self.hparams.io.train)
@@ -342,6 +370,7 @@ class RebaseT5(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
+        return opt
         return {
             "optimizer": opt,
             "lr_scheduler": {

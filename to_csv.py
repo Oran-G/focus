@@ -39,8 +39,8 @@ def main(cfg: DictConfig) -> None:
     SeqIO.write(new_records, cfg.io.finput, "fasta")
     os.system(f'mmseqs createdb {cfg.io.finput} DB')
     print(f'mmseqs createdb {cfg.io.finput} DB')
-    os.system(f'mmseqs cluster  DB DB_clu tmp --min-seq-id 0.3')
-    print('mmseqs cluster DB DB_clu tmp --min-seq-id 0.3')
+    os.system(f'mmseqs cluster  DB DB_clu /scratch/jam1657/tmp --min-seq-id 0.3')
+    print('mmseqs cluster DB DB_clu /scratch/jam1657/tmp --min-seq-id 0.3')
     os.system(f'mmseqs createtsv DB DB DB_clu {cfg.io.temp}')
     print(f'mmseqs createtsv DB DB DB_clu {cfg.io.temp}')
 
