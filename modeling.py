@@ -39,7 +39,7 @@ class CSVDataset(Dataset):
         self.data =self.data
     
     def __getitem__(self, idx):
-        return self.data[idx % 10]
+        return self.data[idx % 1000]
     
     def __len__(self):
         return len(self.data)
@@ -227,7 +227,7 @@ class RebaseT5(pl.LightningModule):
             # TODO: grab these from the config
             d_model=self.hparams.model.d_model,
             d_ff=self.hparams.model.d_ff,
-            num_layers=2,
+            num_layers=self.hparams.model.layers,
             pad_token_id=self.dictionary.pad(),
             eos_token_id=self.dictionary.eos(),
         )
@@ -263,10 +263,10 @@ class RebaseT5(pl.LightningModule):
         
         # print(batch) 
 
-        if batch_idx == 1000:
-            import pdb; pdb.set_trace()
+        # if batch_idx == 1000:
+        #     import pdb; pdb.set_trace()
 
-        if batch_idx == 0 and self.current_epoch%1000 == 0:
+        if batch_idx % 10000 == 0:
         # if True:
             print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
             print(self.model.state_dict()['lm_head.weight'])
@@ -337,10 +337,10 @@ class RebaseT5(pl.LightningModule):
             apply_eos=True,
             apply_bos=False,
         )
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         # print('length of dataset', len(dataset))
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader
     def val_dataloader(self):
@@ -370,12 +370,13 @@ class RebaseT5(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
-        return opt
+        # return opt
         return {
             "optimizer": opt,
             "lr_scheduler": {
-                "scheduler": ReduceLROnPlateau(opt, patience=1500, verbose=True),
-                "monitor": "train_acc",
+                "scheduler": ReduceLROnPlateau(opt, patience=self.hparams.model.lr_patience, verbose=True),
+                "monitor": "train_loss",
+                'interval': 'step',
                 "frequency": 1
                 # If "monitor" references validation metrics, then "frequency" should be set to a
                 # multiple of "trainer.check_val_every_n_epoch".
@@ -399,7 +400,8 @@ def main(cfg: DictConfig) -> None:
 
     #         import pdb; pdb.set_trace()
     wandb_logger = WandbLogger(project="Focus")
-    checkpoint_callback = ModelCheckpoint(monitor="train_acc") 
+    wandb_logger.experiment.config.update(dict(cfg.model))
+    checkpoint_callback = ModelCheckpoint(monitor="train_loss", filename='T5-640') 
 
     trainer = pl.Trainer(gpus=1, 
         logger=wandb_logger,
@@ -408,13 +410,14 @@ def main(cfg: DictConfig) -> None:
         # auto_scale_batch_size=True,
         callbacks=[checkpoint_callback],
         check_val_every_n_epoch=1000,
-        max_epochs=100000
+        max_epochs=10
 
 
         )
     trainer.tune(model)
     trainer.fit(model)
-    print(max(len(batch['seq'][0]) for idx, batch in model.train_dataloader()))
+    print(checkpoint_callback.best_model_path)
+    # print(max(len(batch['seq'][0]) for idx, batch in model.train_dataloader()))
 
 if __name__ == '__main__':
     main()
