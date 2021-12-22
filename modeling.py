@@ -255,10 +255,10 @@ class RebaseT5(pl.LightningModule):
         
 
 
-        if batch_idx % 10000 == 0:
+        # if batch_idx % 10000 == 0:
 
-            print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
-            print(self.model.state_dict()['lm_head.weight'])
+        #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
+        #     print(self.model.state_dict()['lm_head.weight'])
 
         # quit()
         # log accuracy
@@ -281,9 +281,9 @@ class RebaseT5(pl.LightningModule):
 
         output = self.model(input_ids=batch['seq'], attention_mask=mask,  labels=batch['bind'])
 
-        if True:
-            print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
-            print(self.model.state_dict()['lm_head.weight'])
+        # if True:
+        #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
+        #     print(self.model.state_dict()['lm_head.weight'])
         # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
@@ -302,7 +302,7 @@ class RebaseT5(pl.LightningModule):
         )
         # import pdb; pdb.set_trace()
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size shuffle=True, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader
     def val_dataloader(self):
@@ -346,7 +346,7 @@ def main(cfg: DictConfig) -> None:
     wandb_logger = WandbLogger(project="Focus")
     wandb_logger.experiment.config.update(dict(cfg.model))
     checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=cfg.model.name) 
-    tune_trainer = pl.Trainer(gpus=cfg.model.gpu, 
+    trainer = pl.Trainer(gpus=cfg.model.gpu, 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
@@ -357,17 +357,19 @@ def main(cfg: DictConfig) -> None:
         default_root_dir=cfg.io.checkpoints,
         accumulate_grad_batches=1,
         precision=cfg.model.precision,
-        auto_scale_batch_size="binsearch"
+        auto_scale_batch_size="power"
 
 
 
         )
     # quit()
     print(model.batch_size)
+    print('tune: ')
     trainer.tune(model)
     print(model.batch_size)
     # quit()
-    trainer = pl.Trainer(gpus=cfg.model.gpu, 
+    print(int(max(1, cfg.model.batch_size/model.batch_size)))
+    trainer.__init__(gpus=cfg.model.gpu, 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
