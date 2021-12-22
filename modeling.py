@@ -216,6 +216,7 @@ class RebaseT5(pl.LightningModule):
         self.save_hyperparameters(cfg)
         print('batch size', self.hparams.model.batch_size)
         self.batch_size = self.hparams.model.batch_size
+        
 
         self.dictionary = InlineDictionary.from_list(
             tokenization['toks']
@@ -238,7 +239,7 @@ class RebaseT5(pl.LightningModule):
 
         self.model = T5ForConditionalGeneration(t5_config)
         self.accuracy = torchmetrics.Accuracy(ignore_index=-100)
-        self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
+        # self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
         print('initialized')
 
     def training_step(self, batch, batch_idx):
@@ -301,7 +302,7 @@ class RebaseT5(pl.LightningModule):
         )
         # import pdb; pdb.set_trace()
 
-        dataloader = DataLoader(dataset, batch_size=self.actual_batch_size, shuffle=True, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size shuffle=True, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader
     def val_dataloader(self):
@@ -312,7 +313,7 @@ class RebaseT5(pl.LightningModule):
             apply_bos=False,
         )
 
-        dataloader = DataLoader(dataset, batch_size=self.actual_batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader 
 
@@ -362,7 +363,9 @@ def main(cfg: DictConfig) -> None:
 
         )
     # quit()
+    print(model.batch_size)
     trainer.tune(model)
+    print(model.batch_size)
     # quit()
     trainer = pl.Trainer(gpus=cfg.model.gpu, 
         logger=wandb_logger,
@@ -373,10 +376,8 @@ def main(cfg: DictConfig) -> None:
         # check_val_every_n_epoch=1000,
         # max_epochs=cfg.model.max_epochs,
         default_root_dir=cfg.io.checkpoints,
-        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.hparams.batch_size)),
+        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size)),
         precision=cfg.model.precision
-
-
 
         )
     trainer.fit(model)
