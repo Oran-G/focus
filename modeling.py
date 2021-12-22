@@ -34,22 +34,31 @@ class CSVDataset(Dataset):
         # print(self.df['seq'][0])
         if supervised:
             self.df = self.df.dropna()
+        # print(self.df['seq'].apply(len).mean())
+        # quit()
         self.data = self.split(split)[['seq', 'bind']].to_dict('records')
         self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
         self.data =self.data
     
     def __getitem__(self, idx):
-        return self.data[idx % 1000]
+        return self.data[idx]
     
     def __len__(self):
         return len(self.data)
     
     def split(self, split):
         if split.lower() == 'train':
+            # print(len(self.df[0:int(.7*len(self.df))]))
+            # return self.df[0:int(.7*len(self.df))]
             return self.df[self.df['split'] == 0]
         elif split.lower() == 'val':
+            # print(len(self.df[int(.7*len(self.df)):int(.85*len(self.df))]))
+            
+            # return self.df[int(.7*len(self.df)):int(.85*len(self.df))]
             return self.df[self.df['split'] == 1]
         elif split.lower() == 'test':
+            
+            # return self.df[int(.85*len(self.df)):]
             return self.df[self.df['split'] == 2]
 
 
@@ -95,11 +104,6 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
                 'bind': self.dataset[new_idx][0].split(' ')[self.dna_element]
             }     
         except IndexError:
-            # print('hello')
-            # print(self.dataset[new_idx][0].split(' '))
-            # # print(self.dataset[new_idx][0])
-            # print(self.dataset[new_idx])
-
             # print(new_idx)
             # print({
             #     'protein': self.dataset[new_idx][1].replace(' ', ''),
@@ -234,46 +238,27 @@ class RebaseT5(pl.LightningModule):
 
         self.model = T5ForConditionalGeneration(t5_config)
         self.accuracy = torchmetrics.Accuracy(ignore_index=-100)
+        self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
         print('initialized')
 
     def training_step(self, batch, batch_idx):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
         
-        # input_ids, attention_mask, labels
-        # torch.grad(   )
-        # mask = batch['protein'].clone()
-        # def func(x):
-        #     if x == self.dictionary.pad():
-        #         return 0
-        #     return 1
+
         # import pdb; pdb.set_trace()
         # 1 for tokens that are not masked; 0 for tokens that are masked
         mask = (batch['seq'] != self.dictionary.pad()).int()
-        # print(batch)
-        # print(mask)
-        # quit()
-        
-            
-            
-        
-       
-        # print(max([batch['bind'][i] for i in range(batch['bind'].shape[0])]))
+
         output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
         
-        # print(batch) 
 
-        # if batch_idx == 1000:
-        #     import pdb; pdb.set_trace()
 
         if batch_idx % 10000 == 0:
-        # if True:
+
             print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
             print(self.model.state_dict()['lm_head.weight'])
-        # # print(mask)
-        # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
-        # print(output['logits'].argmax(-1))
-        # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
+
         # quit()
         # log accuracy
         # self.log('train_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
@@ -288,35 +273,13 @@ class RebaseT5(pl.LightningModule):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
         
-        # input_ids, attention_mask, labels
-        # torch.grad(   )
-        # mask = batch['protein'].clone()
-        # def func(x):
-        #     if x == self.dictionary.pad():
-        #         return 0
-        #     return 1
+
         # import pdb; pdb.set_trace()
         # 1 for tokens that are not masked; 0 for tokens that are masked
         mask = (batch['seq'] != self.dictionary.pad()).int()
-        # print(batch)
-        # print(mask)
-        # quit()
-        
-        
-            
-       
-        # print(max([batch['bind'][i] for i in range(batch['bind'].shape[0])]))
+
         output = self.model(input_ids=batch['seq'], attention_mask=mask,  labels=batch['bind'])
-        # if batch_idx == 0:
-        #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
-        # print(batch) 
-        # # print(mask)
-        # # # print(1 if batch['protein'] != self.dictionary.pad() else 0)
-        # print(output['logits'].argmax(-1))
-        # # print(self.accuracy(output['logits'].argmax(-1), batch['dna']))
-        # quit()
-        # log accuracy
-        # if batch_idx == 0 and self.current_epoch%500 == 0:
+
         if True:
             print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
             print(self.model.state_dict()['lm_head.weight'])
@@ -329,7 +292,6 @@ class RebaseT5(pl.LightningModule):
         }
     
     def train_dataloader(self):
-        # print(self.hparams.io.train)
         dataset = EncodedFastaDatasetWrapper(
             CSVDataset(self.cfg.io.final, 'train'),
 
@@ -338,86 +300,87 @@ class RebaseT5(pl.LightningModule):
             apply_bos=False,
         )
         # import pdb; pdb.set_trace()
-        # print('length of dataset', len(dataset))
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.actual_batch_size, shuffle=True, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader
     def val_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
-            CSVDataset(self.cfg.io.final, 'train'),
+            CSVDataset(self.cfg.io.final, 'val'),
             self.dictionary,
             apply_eos=True,
             apply_bos=False,
         )
-        # print('length of dataset', len(dataset))
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.actual_batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
 
         return dataloader 
-    #     # print(self.hparams.io.train)
-    #     dataset = EncodedFastaDatasetWrapper(
-    #         SupervisedRebaseDataset(
-    #             FastaDataset(self.hparams.io.val)
-    #         ),
-    #         self.dictionary
-    #     )
-    #     # print('length of dataset', len(dataset))
 
-    #     dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
-
-    #     return dataloader
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
         # return opt
-        return {
-            "optimizer": opt,
-            "lr_scheduler": {
-                "scheduler": ReduceLROnPlateau(opt, patience=self.hparams.model.lr_patience, verbose=True),
-                "monitor": "train_loss",
-                'interval': 'step',
-                "frequency": 1
-                # If "monitor" references validation metrics, then "frequency" should be set to a
-                # multiple of "trainer.check_val_every_n_epoch".
-            },
-        }
+        if self.hparams.model.scheduler:
+            return {
+                "optimizer": opt,
+                "lr_scheduler": {
+                    "scheduler": ReduceLROnPlateau(opt, patience=self.hparams.model.lr_patience, verbose=True),
+                    "monitor": "train_loss_step",
+                    'interval': 'step',
+                    "frequency": 1
+                    # If "monitor" references validation metrics, then "frequency" should be set to a
+                    # multiple of "trainer.check_val_every_n_epoch".
+                },
+            }
+        else:
+            return opt
 
 @hydra.main(config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     model = RebaseT5(cfg)
     max1 = 0
-    # for idx, batch in enumerate(model.train_dataloader()):
-    #     if batch['seq'].shape[1] >max1:
-    #         max1 = batch['seq'].shape[1]
-    #         maxidx = idx
-    #     if idx >= 710:
-    #         print(batch['seq'].shape[1], max1)
-    #     if idx == 720:
-    #         # print(max1)
-    #         print(maxidx)
+  
 
-    #         import pdb; pdb.set_trace()
     wandb_logger = WandbLogger(project="Focus")
     wandb_logger.experiment.config.update(dict(cfg.model))
-    checkpoint_callback = ModelCheckpoint(monitor="train_loss", filename='T5-640') 
-
-    trainer = pl.Trainer(gpus=1, 
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=cfg.model.name) 
+    tune_trainer = pl.Trainer(gpus=cfg.model.gpu, 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
         # auto_scale_batch_size=True,
         callbacks=[checkpoint_callback],
-        check_val_every_n_epoch=1000,
-        max_epochs=10
+        # check_val_every_n_epoch=1000,
+        # max_epochs=cfg.model.max_epochs,
+        default_root_dir=cfg.io.checkpoints,
+        accumulate_grad_batches=1,
+        precision=cfg.model.precision,
+        auto_scale_batch_size="binsearch"
+
 
 
         )
+    # quit()
     trainer.tune(model)
+    # quit()
+    trainer = pl.Trainer(gpus=cfg.model.gpu, 
+        logger=wandb_logger,
+        # limit_train_batches=2,
+        # limit_train_epochs=3
+        # auto_scale_batch_size=True,
+        callbacks=[checkpoint_callback],
+        # check_val_every_n_epoch=1000,
+        # max_epochs=cfg.model.max_epochs,
+        default_root_dir=cfg.io.checkpoints,
+        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.hparams.batch_size)),
+        precision=cfg.model.precision
+
+
+
+        )
     trainer.fit(model)
     print(checkpoint_callback.best_model_path)
-    # print(max(len(batch['seq'][0]) for idx, batch in model.train_dataloader()))
-
+    trainer.save_checkpoint(f"{cfg.model.name}.ckpt")
 if __name__ == '__main__':
     main()

@@ -1,3 +1,4 @@
 defaults:
-  - io: josh
+  - io: oran
   - model: lightning
+  - override hydra/launcher: submitit_slurm
