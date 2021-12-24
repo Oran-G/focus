@@ -41,3 +41,5 @@ change model configs to have the number of GPUs availible
 install requirements
 
 python3 modeling.py model=lightning,deep,wide,both --multirun
+OR for single experiment
+python3 modeling.py 

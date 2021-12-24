@@ -5,7 +5,7 @@ lr: 1e-2
 layers: 4
 lr_patience: 10000
 scheduler: True
-gpu: 0 
+gpu: 8
 max_epochs: -1
 name: deep
 precision: 16
