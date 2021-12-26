@@ -17,6 +17,8 @@ from pytorch_lightning.loggers import WandbLogger
 from pandas import DataFrame as df
 import pandas as pd
 from pytorch_lightning.callbacks import ModelCheckpoint
+import torch
+
 
 '''
 TODOs (10/17/21):
@@ -134,6 +136,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
+
         return {
             k: self.dictionary.encode_line(v, line_tokenizer=list, append_eos=False, add_if_not_exist=False).long()
             for k, v in self.dataset[idx].items()
@@ -224,8 +227,8 @@ class RebaseT5(pl.LightningModule):
         self.cfg = cfg
         
 
-        print(len(self.dictionary))
-
+        self.esm, self.esm_dictionary = torch.hub.load("facebookresearch/esm:main", "esm1b_t33_650M_UR50S")
+       
         t5_config=T5Config(
             vocab_size=len(self.dictionary),
             decoder_start_token_id=self.dictionary.pad(),
@@ -261,7 +264,10 @@ class RebaseT5(pl.LightningModule):
         # make sure you don't take gradients through ESM-1b; do torch.no_grad()
         # alternatively, you can do this in __init__: [for parameter in self.esm1b_model.paramters(): parmater.requires_grad=False]
         # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
-        output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
+        with torch.no_grad():
+            results = self.esm(batch['seq'], repr_layers=[33], return_contacts=True)
+        token_representations = results["representations"][33]
+        output = self.model(encoder_outputs=token_representations, attention_mask=mask, labels=batch['bind'])
         
 
 
@@ -290,9 +296,11 @@ class RebaseT5(pl.LightningModule):
         # import pdb; pdb.set_trace()
         # 1 for tokens that are not masked; 0 for tokens that are masked
         mask = (batch['seq'] != self.dictionary.pad()).int()
-
-        output = self.model(input_ids=batch['seq'], attention_mask=mask,  labels=batch['bind'])
-
+        with torch.no_grad():
+            results = self.esm(batch['seq'], repr_layers=[33], return_contacts=True)
+        token_representations = results["representations"][33]
+        output = self.model(encoder_outputs=token_representations, attention_mask=mask, labels=batch['bind'])
+        
         # if True:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         #     print(self.model.state_dict()['lm_head.weight'])
