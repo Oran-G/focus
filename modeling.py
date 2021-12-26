@@ -1,6 +1,6 @@
 import torch
 import pytorch_lightning as pl
-from transformers import T5Config, T5ForConditionalGeneration
+from transformers import T5Config, T5ForConditionalGeneration, create_optimizer
 from fairseq.data import FastaDataset, EncodedFastaDataset, Dictionary, BaseWrapperDataset
 from constants import tokenization, neucleotides
 from torch.utils.data import DataLoader, Dataset
@@ -135,7 +135,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
         return {
-            k: self.dictionary.encode_line(v, line_tokenizer=list, append_eos=False).long()
+            k: self.dictionary.encode_line(v, line_tokenizer=list, append_eos=False, add_if_not_exist=False).long()
             for k, v in self.dataset[idx].items()
         }
     def __len__(self):
@@ -238,7 +238,7 @@ class RebaseT5(pl.LightningModule):
         )
 
         self.model = T5ForConditionalGeneration(t5_config)
-        self.accuracy = torchmetrics.Accuracy(ignore_index=-100)
+        self.accuracy = torchmetrics.Accuracy(ignore_index=self.dictionary.pad())
         # self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
         print('initialized')
 
@@ -251,6 +251,16 @@ class RebaseT5(pl.LightningModule):
         # 1 for tokens that are not masked; 0 for tokens that are masked
         mask = (batch['seq'] != self.dictionary.pad()).int()
 
+
+        # load ESM-1b in __init__(...)
+        # convert sequence into the ESM-1b vocabulary
+        # # # load up ESM-1b alphabet; convert sequences using our dictionary and ESM-1b dictionary, check that you get same ouputs
+        # # # if not, write a conversion function convert(t: torch.tensor) -> torch.tensor
+        # take the converted sequence, pass it through ESM-1b, get hidden representations from layer 33
+        # these representations will be of shape torch.tensor [batch, seq_len, 768]
+        # make sure you don't take gradients through ESM-1b; do torch.no_grad()
+        # alternatively, you can do this in __init__: [for parameter in self.esm1b_model.paramters(): parmater.requires_grad=False]
+        # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
         output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
         
 
@@ -262,7 +272,9 @@ class RebaseT5(pl.LightningModule):
 
         # quit()
         # log accuracy
-        # self.log('train_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        # bind_accuracy = batch['bind'].detach()
+        # bind_accuracy[label_mask] = self.dictionary.pad()
+        # self.log('train_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('train_loss', float(output.loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         return {
@@ -284,7 +296,9 @@ class RebaseT5(pl.LightningModule):
         # if True:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         #     print(self.model.state_dict()['lm_head.weight'])
-        # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), batch['bind']), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        # bind_accuracy = batch['bind'].detach()
+        # bind_accuracy[label_mask] = self.dictionary.pad()
+        # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
         return {
@@ -302,7 +316,7 @@ class RebaseT5(pl.LightningModule):
         )
         # import pdb; pdb.set_trace()
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4, collate_fn=dataset.collater)
 
         return dataloader
     def val_dataloader(self):
@@ -313,7 +327,7 @@ class RebaseT5(pl.LightningModule):
             apply_bos=False,
         )
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=0, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
 
         return dataloader 
 
@@ -321,18 +335,29 @@ class RebaseT5(pl.LightningModule):
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
         # return opt
+
+        # figure out reaosnable number of total steps
+        # 100k steps
+        # 4% warmup to peak lr
+        # linear decay after that
+
         if self.hparams.model.scheduler:
-            return {
-                "optimizer": opt,
-                "lr_scheduler": {
-                    "scheduler": ReduceLROnPlateau(opt, patience=self.hparams.model.lr_patience, verbose=True),
-                    "monitor": "train_loss_step",
-                    'interval': 'step',
-                    "frequency": 1
-                    # If "monitor" references validation metrics, then "frequency" should be set to a
-                    # multiple of "trainer.check_val_every_n_epoch".
-                },
-            }
+            return create_optimizer(
+                init_lr=self.hparams.model.lr,
+                num_train_steps=4000,
+                num_warmup_steps=100000,
+            )
+            # return {
+            #     "optimizer": opt,
+            #     "lr_scheduler": {
+            #         "scheduler": ReduceLROnPlateau(opt, patience=self.hparams.model.lr_patience, verbose=True),
+            #         "monitor": "train_loss_step",
+            #         'interval': 'step',
+            #         "frequency": 1
+            #         # If "monitor" references validation metrics, then "frequency" should be set to a
+            #         # multiple of "trainer.check_val_every_n_epoch".
+            #     },
+            # }
         else:
             return opt
 
@@ -343,10 +368,11 @@ def main(cfg: DictConfig) -> None:
     max1 = 0
   
 
-    wandb_logger = WandbLogger(project="Focus")
+    wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
     wandb_logger.experiment.config.update(dict(cfg.model))
-    checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=cfg.model.name) 
-    trainer = pl.Trainer(gpus=cfg.model.gpu, 
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=cfg.model.name, verbose=True) 
+    trainer = pl.Trainer(
+        gpus=int(cfg.model.gpu), 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
@@ -357,7 +383,9 @@ def main(cfg: DictConfig) -> None:
         default_root_dir=cfg.io.checkpoints,
         accumulate_grad_batches=1,
         precision=cfg.model.precision,
-        auto_scale_batch_size="power"
+        auto_scale_batch_size="power",
+        accelerator='ddp',
+        log_every_n_steps=5,
 
 
 
@@ -365,11 +393,13 @@ def main(cfg: DictConfig) -> None:
     # quit()
     print(model.batch_size)
     print('tune: ')
-    trainer.tune(model)
+    # trainer.tune(model)
+    model.batch_size = 8
     print(model.batch_size)
     # quit()
     print(int(max(1, cfg.model.batch_size/model.batch_size)))
-    trainer.__init__(gpus=cfg.model.gpu, 
+    trainer.__init__(
+        gpus=int(cfg.model.gpu), 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
@@ -378,8 +408,10 @@ def main(cfg: DictConfig) -> None:
         # check_val_every_n_epoch=1000,
         # max_epochs=cfg.model.max_epochs,
         default_root_dir=cfg.io.checkpoints,
-        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size)),
-        precision=cfg.model.precision
+        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(cfg.model.gpu))),
+        precision=cfg.model.precision,
+        accelerator='ddp',
+        log_every_n_steps=5,
 
         )
     trainer.fit(model)
