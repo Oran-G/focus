@@ -383,7 +383,7 @@ def main(cfg: DictConfig) -> None:
 
         )
     trainer.fit(model)
-    print(checkpoint_callback.best_model_path)
+#     print(checkpoint_callback.best_model_path)
     trainer.save_checkpoint(f"{cfg.model.name}.ckpt")
 if __name__ == '__main__':
     main()
