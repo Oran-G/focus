@@ -3,7 +3,7 @@ d_model: 128
 batch_size: 2048
 lr: 1e-2
 layers: 4
-lr_patience: 10000
+lr_patience: 100
 scheduler: True
 gpu: 8
 max_epochs: -1
