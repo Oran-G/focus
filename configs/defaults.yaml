@@ -1,4 +1,6 @@
 defaults:
-  - io: grid
+  - io: josh
   - model: lightning
+  - esm: esm
   - override hydra/launcher: submitit_slurm
+  

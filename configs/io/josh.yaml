@@ -9,3 +9,5 @@ test: /scratch/jam1657/rebase/generated/test-labeled
 finput: /scratch/jam1657/rebase/downloaded/All_Type_II_restriction_enzyme_genes_Protein.fasta
 final: /scratch/jam1657/rebase/generated/final.csv
 temp: /scratch/jam1657/rebase/generated/clusters.tsv
+checkpoints: /scratch/jam1657/rebase/models
+wandb_dir: /scratch/jam1657/rebase/wandb

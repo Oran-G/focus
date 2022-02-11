@@ -1,6 +1,6 @@
 import torch
 import pytorch_lightning as pl
-from transformers import T5Config, T5ForConditionalGeneration, create_optimizer
+from transformers import T5Config, T5ForConditionalGeneration, get_linear_schedule_with_warmup
 from fairseq.data import FastaDataset, EncodedFastaDataset, Dictionary, BaseWrapperDataset
 from constants import tokenization, neucleotides
 from torch.utils.data import DataLoader, Dataset
@@ -38,7 +38,11 @@ class CSVDataset(Dataset):
             self.df = self.df.dropna()
         # print(self.df['seq'].apply(len).mean())
         # quit()
+        def cat(x):
+            return (x[:1023] if len(x) > 1024 else x)
+        self.df['seq'] = self.df['seq'].apply(cat)
         self.data = self.split(split)[['seq', 'bind']].to_dict('records')
+    
         self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
         self.data =self.data
     
@@ -213,6 +217,11 @@ class InlineDictionary(Dictionary):
             d.add_symbol(word, n=count, overwrite=False)
         return d
 
+def accuracy(predict:torch.tensor, label:torch.tensor, mask:torch.tensor):
+    first = (predict==label).int()
+    second = first*mask
+    return second.sum()/mask.sum()
+
 class RebaseT5(pl.LightningModule):
     def __init__(self, cfg):
         super(RebaseT5, self).__init__()
@@ -227,7 +236,7 @@ class RebaseT5(pl.LightningModule):
         self.cfg = cfg
         
 
-        self.esm, self.esm_dictionary = torch.hub.load("facebookresearch/esm:main", "esm1b_t33_650M_UR50S")
+        self.esm, self.esm_dictionary = torch.hub.load("facebookresearch/esm:main", "esm1_t6_43M_UR50S")
        
         t5_config=T5Config(
             vocab_size=len(self.dictionary),
@@ -264,24 +273,23 @@ class RebaseT5(pl.LightningModule):
         # make sure you don't take gradients through ESM-1b; do torch.no_grad()
         # alternatively, you can do this in __init__: [for parameter in self.esm1b_model.paramters(): parmater.requires_grad=False]
         # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
-        with torch.no_grad():
-            results = self.esm(batch['seq'], repr_layers=[33], return_contacts=True)
-        token_representations = results["representations"][33]
-        output = self.model(encoder_outputs=token_representations, attention_mask=mask, labels=batch['bind'])
+        if self.hparams.esm.esm != False:
+
+            if self.hparams.esm.esmgrad != False:
+                with torch.no_grad:
+                    results = self.esm(batch['seq'], repr_layers=[6], return_contacts=True)
+                    token_representations = results["representations"][6]
+            else:
+                results = self.esm(batch['seq'], repr_layers=[6], return_contacts=True)
+                token_representations = results["representations"][6]
+            
+            output = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
+        else:
+            output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
         
 
-
-        # if batch_idx % 10000 == 0:
-
-        #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
-        #     print(self.model.state_dict()['lm_head.weight'])
-
-        # quit()
-        # log accuracy
-        # bind_accuracy = batch['bind'].detach()
-        # bind_accuracy[label_mask] = self.dictionary.pad()
-        # self.log('train_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('train_loss', float(output.loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_acc',int(accuracy(output['logits'].argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
         return {
             'loss': output.loss,
@@ -296,10 +304,14 @@ class RebaseT5(pl.LightningModule):
         # import pdb; pdb.set_trace()
         # 1 for tokens that are not masked; 0 for tokens that are masked
         mask = (batch['seq'] != self.dictionary.pad()).int()
-        with torch.no_grad():
-            results = self.esm(batch['seq'], repr_layers=[33], return_contacts=True)
-        token_representations = results["representations"][33]
-        output = self.model(encoder_outputs=token_representations, attention_mask=mask, labels=batch['bind'])
+        if self.hparams.esm.esm != False:
+
+            results = self.esm(batch['seq'], repr_layers=[6], return_contacts=True)
+            token_representations = results["representations"][6]
+            output = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
+        else:
+            output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
+        
         
         # if True:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
@@ -308,6 +320,7 @@ class RebaseT5(pl.LightningModule):
         # bind_accuracy[label_mask] = self.dictionary.pad()
         # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc',int(accuracy(output['logits'].argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
         return {
             'loss': output.loss,
@@ -350,11 +363,14 @@ class RebaseT5(pl.LightningModule):
         # linear decay after that
 
         if self.hparams.model.scheduler:
-            return create_optimizer(
-                init_lr=self.hparams.model.lr,
-                num_train_steps=4000,
-                num_warmup_steps=100000,
-            )
+            return {
+                'optimizer': opt,
+                'lr_scheduler': get_linear_schedule_with_warmup(
+                    optimizer=opt,
+                    num_training_steps=600000,
+                    num_warmup_steps=24000,
+                )
+            }
             # return {
             #     "optimizer": opt,
             #     "lr_scheduler": {
@@ -378,26 +394,25 @@ def main(cfg: DictConfig) -> None:
 
     wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
     wandb_logger.experiment.config.update(dict(cfg.model))
-    checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=cfg.model.name, verbose=True) 
-    trainer = pl.Trainer(
-        gpus=int(cfg.model.gpu), 
-        logger=wandb_logger,
-        # limit_train_batches=2,
-        # limit_train_epochs=3
-        # auto_scale_batch_size=True,
-        callbacks=[checkpoint_callback],
-        # check_val_every_n_epoch=1000,
-        # max_epochs=cfg.model.max_epochs,
-        default_root_dir=cfg.io.checkpoints,
-        accumulate_grad_batches=1,
-        precision=cfg.model.precision,
-        auto_scale_batch_size="power",
-        accelerator='ddp',
-        log_every_n_steps=5,
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
+    # trainer = pl.Trainer(
+    #     gpus=int(cfg.model.gpu), 
+    #     # logger=wandb_logger,
+    #     # limit_train_batches=2,
+    #     # limit_train_epochs=3
+    #     # auto_scale_batch_size=True,
+    #     callbacks=[checkpoint_callback],
+    #     # check_val_every_n_epoch=1000,
+    #     # max_epochs=cfg.model.max_epochs,
+    #     default_root_dir=cfg.io.checkpoints,
+    #     accumulate_grad_batches=1,
+    #     precision=cfg.model.precision,
+    #     auto_scale_batch_size="power",
+    #     accelerator='ddp',
+    #     log_every_n_steps=5,
 
 
-
-        )
+    #     )
     # quit()
     print(model.batch_size)
     print('tune: ')
@@ -406,7 +421,8 @@ def main(cfg: DictConfig) -> None:
     print(model.batch_size)
     # quit()
     print(int(max(1, cfg.model.batch_size/model.batch_size)))
-    trainer.__init__(
+    # trainer.__init__(
+    trainer = pl.Trainer(
         gpus=int(cfg.model.gpu), 
         logger=wandb_logger,
         # limit_train_batches=2,
