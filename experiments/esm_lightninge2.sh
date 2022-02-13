@@ -16,4 +16,4 @@ module purge
 singularity exec --nv \
 	    --overlay /scratch/jam1657/conda/rebase-torch/overlay-7.5GB-300K.ext3:ro \
 	    /scratch/work/public/singularity/cuda11.3.0-cudnn8-devel-ubuntu20.04.sif \
-	    /bin/bash -c "source /ext3/env.sh; python modeling.py model=lightning esm.esm=True model.gpu=2"
+	    /bin/bash -c "source /ext3/env.sh; python modeling.py model=lightning esm=esm model.gpu=2"
