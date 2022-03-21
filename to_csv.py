@@ -124,7 +124,7 @@ def main(cfg: DictConfig) -> None:
             to_df['split'].append(s)
         # except:
         #     print(record)
-
+    
     df = pd.DataFrame.from_dict(to_df)
     df.to_csv(cfg.io.final)
     print(cfg.io.final)

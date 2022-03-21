@@ -20,8 +20,6 @@ import pandas as pd
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 import torch
 
-import pandas as pd
-
 
 '''
 TODOs (10/17/21):
@@ -228,7 +226,7 @@ def accuracy(predict:torch.tensor, label:torch.tensor, mask:torch.tensor):
 class RebaseT5(pl.LightningModule):
     def __init__(self, cfg):
         super(RebaseT5, self).__init__()
-        self.save_hyperparameters(cfg)
+        self.save_hyperparameters(cfg['hyper_parameters'])
         print('batch size', self.hparams.model.batch_size)
         self.batch_size = self.hparams.model.batch_size
         
@@ -236,12 +234,13 @@ class RebaseT5(pl.LightningModule):
         self.dictionary = InlineDictionary.from_list(
             tokenization['toks']
         )
-        self.cfg = cfg
+        self.cfg = cfg["hyper_parameters"]
 
         self.perplex = torch.nn.CrossEntropyLoss(reduction='none')
         
 
         self.esm, self.esm_dictionary = torch.hub.load("facebookresearch/esm:main", self.hparams.esm.path)
+        
        
         t5_config=T5Config(
             vocab_size=len(self.dictionary),
@@ -259,10 +258,10 @@ class RebaseT5(pl.LightningModule):
         # self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
         print('initialized')
 
-    def perplexity(self, output, target):
-        o =  output
-        t = target
-        return torch.mean(torch.square(self.perplex(o, t)))
+    # def perplexity(self, output, target):
+    #     o =  output
+    #     t = target
+    #     return torch.mean(torch.square(self.perplex(o, t)))
 
 
     def training_step(self, batch, batch_idx):
@@ -331,10 +330,10 @@ class RebaseT5(pl.LightningModule):
         # bind_accuracy = batch['bind'].detach()
         # bind_accuracy[label_mask] = self.dictionary.pad()
         # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        # import pdb; pdb.set_trace()
-        self.log('val_loss', float(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        import pdb; pdb.set_trace()
+        self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_acc',float(accuracy(output['logits'].argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         return {
             'loss': output.loss,
             'batch_size': batch['seq'].size(0)
@@ -350,7 +349,7 @@ class RebaseT5(pl.LightningModule):
         )
         # import pdb; pdb.set_trace()
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=1, collate_fn=dataset.collater)
 
         return dataloader
     def val_dataloader(self):
@@ -361,7 +360,7 @@ class RebaseT5(pl.LightningModule):
             apply_bos=False,
         )
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=4, collate_fn=dataset.collater)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collater)
 
         return dataloader 
 
@@ -380,8 +379,8 @@ class RebaseT5(pl.LightningModule):
                 'optimizer': opt,
                 'lr_scheduler': get_linear_schedule_with_warmup(
                     optimizer=opt,
-                    num_training_steps=40000,
-                    num_warmup_steps=1000,
+                    num_training_steps=300000,
+                    num_warmup_steps=10000,
                 )
             }
             # return {
@@ -415,32 +414,12 @@ class RebaseT5(pl.LightningModule):
                 output = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
             else:
                 output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
-            # import pdb; pdb.set_trace()
-            import pdb
-            for i in range(batch['bind'].shape[0]):
-                # import pdb; pdbss.set_trace()
-                if (batch['seq'][i] == 1).nonzero(as_tuple=True)[0].shape[0] != 0:
-
-                    seq = batch['seq'][i][0: (batch['seq'][i] == 1).nonzero(as_tuple=True)[0][0]]
-                else:
-                    seq = batch['seq'][i]
-                if (batch['bind'][i] == -100).nonzero(as_tuple=True)[0].shape[0] != 0:
-                    bind = batch['bind'][i][0: (batch['bind'][i] == -100).nonzero(as_tuple=True)[0][0]]
-                else:
-                    bind = batch['bind'][i]
-
-                if (output['logits'].argmax(-1)[i] == -100).nonzero(as_tuple=True)[0].shape[0] != 0:
-                    pred = output['logits'].argmax(-1)[i][0: (output['logits'].argmax(-1)[i] == -100).nonzero(as_tuple=True)[0][0]]
-                else:
-                    pred = output['logits'].argmax(-1)[i]
+            alls.append({'seq': self.dictionary.decode(batch['seq']), 
+                'bind': self.dictionary.decode(batch['bind']), 
+                'predicted': self.dictionary.decode(output['logits'].argmax(-1))})
+        
 
 
-                # print(seq, bind, pred)ß
-                alls.append({'seq': self.dictionary.string(seq), 
-                    'bind': self.dictionary.string(bind), 
-                    'predicted': self.dictionary.string(pred)})
-            
-        return alls
             
             
             
@@ -450,50 +429,49 @@ class RebaseT5(pl.LightningModule):
 @hydra.main(config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
-    model = RebaseT5(cfg)
-    max1 = 0
+    model3 = torch.load('/scratch/og2114/rebase/logs/Focus/21hjudcf/checkpoints/both_dff-128_dmodel-768_lr-0.001_batch-512.ckpt')
+    # print(model)
+    # quit()
+    model2 = RebaseT5(model3)
+
+    # print(model3['state_dict'].keys())
+    model = RebaseT5(model3)
+    model.val_test()
   
 
-    wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
-    wandb_logger.experiment.config.update(dict(cfg.model))
-    checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
-    acc_callback = ModelCheckpoint(monitor="val_acc", filename=f'acc-{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
-    lr_monitor = LearningRateMonitor(logging_interval='step')
-    print(model.batch_size)
-    print('tune: ')
-    # trainer.tune(model)
-    model.batch_size = 8
-    if int(cfg.esm.layers) == 12:
-        model.batch_size = 2
-    if int(cfg.esm.layers) == 34:
-        model.batch_size = 1
-    print(model.batch_size)
-    # quit()
-    print(int(max(1, cfg.model.batch_size/model.batch_size)))
-    # trainer.__init__(
-    trainer = pl.Trainer(
-        gpus=int(cfg.model.gpu), 
-        logger=wandb_logger,
-        # limit_train_batches=2,
-        # limit_train_epochs=3
-        # auto_scale_batch_size=True,
-        callbacks=[checkpoint_callback, lr_monitor, acc_callback],
-        # check_val_every_n_epoch=1000,
-        # max_epochs=cfg.model.max_epochs,
-        default_root_dir=cfg.io.checkpoints,
-        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(cfg.model.gpu))),
-        precision=cfg.model.precision,
-        accelerator='ddp',
-        log_every_n_steps=5,
+#     wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
+#     wandb_logger.experiment.config.update(dict(cfg.model))
+#     checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
+#     acc_callback = ModelCheckpoint(monitor="val_acc", filename=f'acc-{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
+#     lr_monitor = LearningRateMonitor(logging_interval='step')
+#     print(model.batch_size)
+#     model.batch_size = 8
+#     if int(cfg.esm.layers) == 12:
+#         model.batch_size = 2
+#     print(model.batch_size)
+#     # quit()
+#     print(int(max(1, cfg.model.batch_size/model.batch_size)))
+#     # trainer.__init__(
+#     trainer = pl.Trainer(
+#         gpus=int(cfg.model.gpu), 
+#         logger=wandb_logger,
+#         # limit_train_batches=2,
+#         # limit_train_epochs=3
+#         # auto_scale_batch_size=True,
+#         callbacks=[checkpoint_callback, lr_monitor, acc_callback],
+#         # check_val_every_n_epoch=1000,
+#         # max_epochs=cfg.model.max_epochs,
+#         default_root_dir=cfg.io.checkpoints,
+#         accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(cfg.model.gpu))),
+#         precision=cfg.model.precision,
+#         accelerator='ddp',
+#         log_every_n_steps=5,
 
-        )
-    trainer.fit(model)
-    one = model.val_test()
-    print(one)
-    pred = pd.DataFrame(one)
-    print(pred)
-    pred.to_csv('/scratch/og2114/rebase/focus/esm34_largest.csv')
-#     print(checkpoint_callback.best_model_path)
-    # trainer.save_checkpoint(f"{cfg.model.name}.ckpt")
+#         )
+#     # trainer.fit(model)
+# #     print(checkpoint_callback.best_model_path)
+#     # trainer.save_checkpoint(f"{cfg.model.name}.ckpt")
+    
+
 if __name__ == '__main__':
     main()
