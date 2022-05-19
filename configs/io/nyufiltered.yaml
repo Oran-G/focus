@@ -8,8 +8,8 @@ val: /scratch/og2114/rebase/data/val-labeled
 test: /scratch/og2114/rebase/data/test-labeled
 
 finput:  /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
-final: /scratch/og2114/rebase/data/final.csv
-temp: /scratch/og2114/rebase/data/clusters.tsv
+final: /scratch/og2114/rebase/data/filtered_data.csv
+temp: /scratch/og2114/rebase/data/filtered_data_clust.tsv
 checkpoints: /scratch/og2114/rebase/models
 wandb_dir: /scratch/og2114/rebase/logs
 # cluster_data: /Users/orangoodman/dev/deeplearning/focus/data/data.parquet

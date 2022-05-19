@@ -32,7 +32,7 @@ def main(cfg: DictConfig) -> None:
         ^^In constants.py^^
     '''
    
-    df = pd.read_parquet(cfg.io.output, engine='pyarrow')
+    df = pd.read_csv(cfg.io.output)
     print('columns:', df.columns)
     print('Total:', df.shape[0])
     print(df.dropna())

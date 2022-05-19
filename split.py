@@ -54,9 +54,14 @@ def main(cfg: DictConfig) -> None:
     # print(sizes[3][6])
     # print(dicts['57682'])
     print(len(sizes[0]))
+    
     print(len(sizes[1]))
+    
     print(len(sizes[2]))
+    print(sizes[2])
     print(len(sizes[3]))
+    print(sizes[3])
+    quit()
     validation = []
     for i in range(4):
         # print(5^i)

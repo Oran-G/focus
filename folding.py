@@ -335,9 +335,10 @@ class RebaseT5(pl.LightningModule):
         # bind_accuracy = batch['bind'].detach()
         # bind_accuracy[label_mask] = self.dictionary.pad()
         # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        import pdb; pdb.set_trace()
-        self.log('val_loss', int(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc',float(accuracy(output['logits'].argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        # import pdb; pdb.set_trace()
+
+        self.log('val_loss', float(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy(output['logits'].argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         return {
             'loss': output.loss,
@@ -359,7 +360,7 @@ class RebaseT5(pl.LightningModule):
         return dataloader
     def val_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
-            CSVDataset(self.cfg.io.final, 'val'),
+            CSVDataset(self.cfg.io.final, 'train'),
             self.dictionary,
             apply_eos=True,
             apply_bos=False,
@@ -384,8 +385,8 @@ class RebaseT5(pl.LightningModule):
                 'optimizer': opt,
                 'lr_scheduler': get_linear_schedule_with_warmup(
                     optimizer=opt,
-                    num_training_steps=300000,
-                    num_warmup_steps=10000,
+                    num_training_steps=10000,
+                    num_warmup_steps=400,
                 )
             }
             # return {
@@ -457,30 +458,22 @@ class RebaseT5(pl.LightningModule):
                 alls.append({'seq': self.dictionary.string(batch['seq'][i]), 
                     'bind': self.dictionary.string(batch['bind'][i]), 
                     'predicted': self.dictionary.string(output['logits'].argmax(-1)[i])})
-
-    
-
-            
-            
-            
-
-    
-
+                    
 @hydra.main(config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     
-    # model = RebaseT5(cfg)
+    model = RebaseT5(cfg)
     # print('init')
     # checkpoint = torch.load('/scratch/og2114/rebase/logs/Focus/21hjudcf/checkpoints/both_dff-128_dmodel-768_lr-0.001_batch-512.ckpt')
     # print(checkpoint.keys())
-    model = RebaseT5.load_from_checkpoint(checkpoint_path="/scratch/og2114/rebase/logs/Focus/ufa553zz/checkpoints/esm12_both_grade3_dff-128_dmodel-768_lr-0.001_batch-512.ckpt")
+    # model = RebaseT5.load_from_checkpoint(checkpoint_path="/scratch/og2114/rebase/logs/Focus/ufa553zz/checkpoints/esm12_both_grade3_dff-128_dmodel-768_lr-0.001_batch-512.ckpt")
     # model = RebaseT5.load_from_checkpoint(checkpoint_path='/scratch/og2114/rebase/logs/Focus/21hjudcf/checkpoints/both_dff-128_dmodel-768_lr-0.001_batch-512.ckpt')
     gpu = cfg.model.gpu
     cfg = model.hparams
     cfg.model.gpu = gpu
     wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
-    wandb_logger.experiment.config.update(dict(cfg.model))
+    # wandb_logger.experiment.config.update(dict(cfg.model))
     checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
     acc_callback = ModelCheckpoint(monitor="val_acc", filename=f'acc-{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
     lr_monitor = LearningRateMonitor(logging_interval='step')
@@ -493,9 +486,7 @@ def main(cfg: DictConfig) -> None:
     if int(cfg.esm.layers) == 34:
         model.batch_size = 1
     print(model.batch_size)
-    # quit()
     print(int(max(1, cfg.model.batch_size/model.batch_size)))
-    # trainer.__init__(
     trainer = pl.Trainer(
         gpus=int(cfg.model.gpu), 
         logger=wandb_logger,
@@ -512,6 +503,7 @@ def main(cfg: DictConfig) -> None:
         log_every_n_steps=5,
 
         )
+    trainer.fit(model)
     trainer.test(model, dataloaders=model.val_dataloader())
     import csv
     dictionaries=model.test_data
@@ -522,39 +514,6 @@ def main(cfg: DictConfig) -> None:
     dict_writer.writerows(dictionaries)
     a_file.close()
   
-
-#     wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
-#     wandb_logger.experiment.config.update(dict(cfg.model))
-#     checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
-#     acc_callback = ModelCheckpoint(monitor="val_acc", filename=f'acc-{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
-#     lr_monitor = LearningRateMonitor(logging_interval='step')
-#     print(model.batch_size)
-#     model.batch_size = 8
-#     if int(cfg.esm.layers) == 12:
-#         model.batch_size = 2
-#     print(model.batch_size)
-#     # quit()
-#     print(int(max(1, cfg.model.batch_size/model.batch_size)))
-#     # trainer.__init__(
-#     trainer = pl.Trainer(
-#         gpus=int(cfg.model.gpu), 
-#         logger=wandb_logger,
-#         # limit_train_batches=2,
-#         # limit_train_epochs=3
-#         # auto_scale_batch_size=True,
-#         callbacks=[checkpoint_callback, lr_monitor, acc_callback],
-#         # check_val_every_n_epoch=1000,
-#         # max_epochs=cfg.model.max_epochs,
-#         default_root_dir=cfg.io.checkpoints,
-#         accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(cfg.model.gpu))),
-#         precision=cfg.model.precision,
-#         accelerator='ddp',
-#         log_every_n_steps=5,
-
-#         )
-#     # trainer.fit(model)
-# #     print(checkpoint_callback.best_model_path)
-#     # trainer.save_checkpoint(f"{cfg.model.name}.ckpt")
     
 
 if __name__ == '__main__':

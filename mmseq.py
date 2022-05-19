@@ -37,7 +37,7 @@ def main(cfg: DictConfig) -> None:
     os.system(f'mmseqs createtsv DB DB DB_clu data.tsv')
     print(f'mmseqs createtsv DB DB DB_clu data.tsv')
     
-    df = pd.read_parquet(cfg.io.output, engine='pyarrow')
+    df = pd.read_csv(cfg.io.output)
 
     with open('data.tsv', 'r') as f:
         read_tsv = csv.reader(f, delimiter="\t")
@@ -54,8 +54,8 @@ def main(cfg: DictConfig) -> None:
             
         df['cluster'] = newcol 
     print(df)
-    table = pa.Table.from_pandas(df)
-    pq.write_table(table, cfg.io.cluster)
+    table = df.to_csv(pd.DataFrame(cfg.io.cluster))
+    # pq.write_table(table, cfg.io.cluster)
     os.system(f'rm data.tsv')
     print(f'rm data.tsv')
 

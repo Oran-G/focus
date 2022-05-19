@@ -1,5 +1,5 @@
 defaults:
-  - io: orannyu
+  - io: nyufiltered
   - model: lightning
   - esm: esm
   - override hydra/launcher: submitit_slurm
