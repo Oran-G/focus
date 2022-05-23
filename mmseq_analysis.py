@@ -16,7 +16,7 @@ import csv
 @hydra.main(config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
-    df = pd.read_parquet(cfg.io.cluster_data, engine='pyarrow')
+    df = pd.read_csv(cfg.io.cluster_data, engine='pyarrow')
     
     # df.dropna()
     print(df)

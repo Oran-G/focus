@@ -23,7 +23,7 @@ def main(cfg: DictConfig) -> None:
     print(len(records))
         
     for row in records:
-        if row.description.split(' ')[0] != '' and row.description.split(' ')[3] != '':
+        if row.description.split(' ')[0] != '':
             new_records.append(
                 SeqRecord(
                     row.seq,
@@ -39,8 +39,8 @@ def main(cfg: DictConfig) -> None:
     SeqIO.write(new_records, cfg.io.finput, "fasta")
     os.system(f'mmseqs createdb {cfg.io.finput} DB')
     print(f'mmseqs createdb {cfg.io.finput} DB')
-    os.system(f'mmseqs cluster  DB DB_clu /scratch/og2114/rebase/data --min-seq-id 0.3')
-    print('mmseqs cluster DB DB_clu /scratch/og2114/rebase/data --min-seq-id 0.3')
+    os.system(f'mmseqs cluster  DB DB_clu /scratch/jam1657/tmp --min-seq-id 0.3')
+    print('mmseqs cluster DB DB_clu /scratch/jam1657/tmp --min-seq-id 0.3')
     os.system(f'mmseqs createtsv DB DB DB_clu {cfg.io.temp}')
     print(f'mmseqs createtsv DB DB DB_clu {cfg.io.temp}')
 
@@ -60,12 +60,6 @@ def main(cfg: DictConfig) -> None:
     read_tsv = list(csv.reader(open(cfg.io.temp, 'r'), delimiter="\t"))
     print(read_tsv[0])
     clust = {row[1]:row[0] for row in read_tsv}
-    l = []
-    for row in read_tsv:
-        if row[0] not in l:
-            l.append(row[0])
-    print(len(l))
-    print(l)
     print(len(clust))
     dicts = {}
     for row in read_tsv:
@@ -112,7 +106,7 @@ def main(cfg: DictConfig) -> None:
 
     splits = [train, validation, test]
     for record in records:
-        if True:
+        if record.description.split(' ')[3] != '':
             name = record.name
             ids = record.id
             seq = str(record.seq)

@@ -9,3 +9,4 @@ test: /datastores/focus-data/test-labeled
 finput: /home/jovyan/newdata/All_Type_II_restriction_enzyme_genes_Protein.fasta
 final: /home/jovyan/newdata/final.csv
 temp: /home/jovyan/newdata/clusters.tsv
+checkpoints: /home/jovyan/newdata/models

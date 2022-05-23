@@ -25,11 +25,15 @@ def main(cfg: DictConfig) -> None:
         start = False
         seq, name, bind = '', '', ''
         total, binds = 0, 0
+        
         for line in tqdm(coke):
             if line == '\n':
                 if start ==  True:
                     # print(seq, name, bind)
-                    df = df.append({'name':name, 'seq':seq, 'bind': bind.replace(',','') if bind != '' else None}, ignore_index=True)
+                    # if bind !='':
+                    if True:
+                        print('t')
+                        df.append({'name':name, 'seq':seq, 'bind': bind.replace(',','') if bind != '' else None}, ignore_index=True)
                     
                     seq = ''
                     name = ''
@@ -40,10 +44,12 @@ def main(cfg: DictConfig) -> None:
                 l = line.split(' ')
                 name = l[0].replace('>','')
                 bind = l[3]
+                b=False
                 start = True
                 total+=1
                 if bind !='':
                     binds+=1
+                    
                 # print(line.split(' '))
                 # if bind >5:
                 #     quit()
@@ -51,11 +57,13 @@ def main(cfg: DictConfig) -> None:
             else:
                 seq+=line.replace(' ','').replace('\n','')
                 
-        table = pa.Table.from_pandas(df)
+        # table = pa.Table.from_pandas(df)
         print('Total:', total)
         print('Contains DNA bind site:', binds)
-        pq.write_table(table, 'args.output')
-
+        # df.dropna()
+        # pq.write_table(table, 'args.output')
+        print(df)
+        df.to_csv(cfg.io.output)
 
         f.close() 
 
