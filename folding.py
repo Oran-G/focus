@@ -22,6 +22,9 @@ import torch
 import pandas as pd
 
 
+import esm.inverse_folding
+import esm
+
 '''
 TODOs (10/17/21):
 * figure out reasonable train/valid set
@@ -43,7 +46,7 @@ class CSVDataset(Dataset):
         def cat(x):
             return (x[:1023] if len(x) > 1024 else x)
         self.df['seq'] = self.df['seq'].apply(cat)
-        self.data = self.split(split)[['seq', 'bind']].to_dict('records')
+        self.data = self.split(split)[['seq', 'name']].to_dict('records')
     
         self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
         self.data =self.data
@@ -110,6 +113,7 @@ class SupervisedRebaseDataset(BaseWrapperDataset):
             return {
                 'seq': self.dataset[new_idx][1].replace(' ', ''),
                 'bind': self.dataset[new_idx][0].split(' ')[self.dna_element]
+                'name'
             }     
         except IndexError:
             # print(new_idx)
@@ -135,6 +139,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         Options to apply bos and eos tokens.   will usually have eos already applied,
         but won't have bos. Hence the defaults here.
         '''
+
         super().__init__(dataset)
         self.dictionary = dictionary
         self.apply_bos = apply_bos
@@ -142,10 +147,14 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
+        structure = esm.inverse_folding.util.load_structure(fpath, chain_id)
+        coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
 
         return {
-            k: self.dictionary.encode_line(v, line_tokenizer=list, append_eos=False, add_if_not_exist=False).long()
-            for k, v in self.dataset[idx].items()
+            # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
+            'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
+            'coords': coords,
+            'seq': seq
         }
     def __len__(self):
         return len(self.dataset)
@@ -177,7 +186,6 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             return self.collate_tensors(batch)
         else:
             return self.collate_dicts(batch)
-
     def collate_dicts(self, batch: List[Dict[str, torch.tensor]]):
         '''
         combine sequences of the form
@@ -207,9 +215,8 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
                 select_by_key(batch, key)
             )
             for key in batch[0].keys()
-        }
-            
-        
+        }    
+
 class InlineDictionary(Dictionary):
     @classmethod
     def from_list(cls, lst: List[str]):
@@ -243,7 +250,7 @@ class RebaseT5(pl.LightningModule):
         self.perplex = torch.nn.CrossEntropyLoss(reduction='none')
         
 
-        self.esm, self.esm_dictionary = torch.hub.load("facebookresearch/esm:main", self.hparams.esm.path)
+        # self.esm, self.esm_dictionary = torch.hub.load("facebookresearch/esm:main", self.hparams.esm.path)
         # self.
        
         t5_config=T5Config(
@@ -259,14 +266,13 @@ class RebaseT5(pl.LightningModule):
 
         self.model = T5ForConditionalGeneration(t5_config)
         self.accuracy = torchmetrics.Accuracy(ignore_index=self.dictionary.pad())
+        
+        self.ifmodel, self.ifalphabet = esm.pretrained.esm_if1_gvp4_t16_142M_UR50()
+        # model = model.eval()
         # self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
         self.test_data = []
         print('initialized')
-
-    # def perplexity(self, output, target):
-    #     o =  output
-    #     t = target
-    #     return torch.mean(torch.square(self.perplex(o, t)))
+        self.loss = nn.CrossEntropyLoss()
 
 
     def training_step(self, batch, batch_idx):
@@ -288,27 +294,19 @@ class RebaseT5(pl.LightningModule):
         # make sure you don't take gradients through ESM-1b; do torch.no_grad()
         # alternatively, you can do this in __init__: [for parameter in self.esm1b_model.paramters(): parmater.requires_grad=False]
         # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
-        if self.hparams.esm.esm != False:
+        pred = self.ifmodel(batch['coords']).logits
+        loss = self.loss(pred, batch['seq'])
 
-            if self.hparams.esm.esmgrad != False:
-                with torch.no_grad():
-                    results = self.esm(batch['seq'], repr_layers=[int(self.hparams.esm.layers)], return_contacts=True)
-                    token_representations = results["representations"][int(self.hparams.esm.layers)]
-            else:
-                results = self.esm(batch['seq'], repr_layers=[int(self.hparams.esm.layers)], return_contacts=True)
-                token_representations = results["representations"][int(self.hparams.esm.layers)]
-            
-            output = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
-        else:
-            output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
+        import pdb; pdb.set_trace
+
         
         
-        self.log('train_loss', float(output.loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(accuracy(output['logits'].argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('train_loss', float(loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
         return {
-            'loss': output.loss,
+            'loss': loss,
             'batch_size': batch['seq'].size(0)
         }
     
@@ -370,7 +368,6 @@ class RebaseT5(pl.LightningModule):
 
         return dataloader 
 
-
     def configure_optimizers(self):
         opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
         # return opt
@@ -402,6 +399,7 @@ class RebaseT5(pl.LightningModule):
             # }
         else:
             return opt
+    
     def test_step(self, batch, batch_idx):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
