@@ -74,7 +74,7 @@ class CSVDataset(Dataset):
 
 
 
-class SupervisedRebaseDataset(BaseWrapperDataset):
+# class SupervisedRebaseDataset(BaseWrapperDataset):
     '''
     Filters a rebased dataset for entries that have supervised labels
     '''
