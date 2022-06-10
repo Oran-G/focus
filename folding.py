@@ -46,7 +46,7 @@ class CSVDataset(Dataset):
         def cat(x):
             return (x[:1023] if len(x) > 1024 else x)
         self.df['seq'] = self.df['seq'].apply(cat)
-        self.data = self.split(split)[['seq', 'name']].to_dict('records')
+        self.data = self.split(split)[['seq', 'id']].to_dict('records')
     
         self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
         self.data =self.data
@@ -268,6 +268,7 @@ class RebaseT5(pl.LightningModule):
         self.accuracy = torchmetrics.Accuracy(ignore_index=self.dictionary.pad())
         
         self.ifmodel, self.ifalphabet = esm.pretrained.esm_if1_gvp4_t16_142M_UR50()
+        
         # model = model.eval()
         # self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
         self.test_data = []
