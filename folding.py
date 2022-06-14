@@ -129,57 +129,57 @@ class CSVDataset(Dataset):
             
 
 
-# class EncodedFastaDatasetWrapper(BaseWrapperDataset):
-#     """
-#     EncodedFastaDataset implemented as a wrapper
-#     """
+class EncodedFastaDatasetWrapper(BaseWrapperDataset):
+    """
+    EncodedFastaDataset implemented as a wrapper
+    """
 
-#     def __init__(self, dataset, dictionary, apply_bos=True, apply_eos=False):
-#         '''
-#         Options to apply bos and eos tokens.   will usually have eos already applied,
-#         but won't have bos. Hence the defaults here.
-#         '''
+    def __init__(self, dataset, dictionary, apply_bos=True, apply_eos=False):
+        '''
+        Options to apply bos and eos tokens.   will usually have eos already applied,
+        but won't have bos. Hence the defaults here.
+        '''
 
-#         super().__init__(dataset)
-#         self.dictionary = dictionary
-#         self.apply_bos = apply_bos
-#         self.apply_eos = apply_eos
+        super().__init__(dataset)
+        self.dictionary = dictionary
+        self.apply_bos = apply_bos
+        self.apply_eos = apply_eos
 
-#     def __getitem__(self, idx):
-#         # desc, seq = self.dataset[idx]
-#         structure = esm.inverse_folding.util.load_structure(self.dataset[idx]['id'], 'A')
-#         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
+    def __getitem__(self, idx):
+        # desc, seq = self.dataset[idx]
+        structure = esm.inverse_folding.util.load_structure(self.dataset[idx]['id'], 'A')
+        coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
 
-#         return {
-#             # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
-#             'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
-#             'coords': coords,
-#             'seq': seq
-#         }
-#     def __len__(self):
-#         return len(self.dataset)
-#     def collate_tensors(self, batch: List[torch.tensor]):
-#         batch_size = len(batch)
-#         max_len = max(el.size(0) for el in batch)
-#         tokens = torch.empty(
-#             (
-#                 batch_size,
-#                 max_len + int(self.apply_bos) + int(self.apply_eos) # eos and bos
-#             ),
-#             dtype=torch.int64,
-#         ).fill_(self.dictionary.pad())
+        return {
+            # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
+            'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
+            'coords': coords,
+            'seq': seq
+        }
+    def __len__(self):
+        return len(self.dataset)
+    def collate_tensors(self, batch: List[torch.tensor]):
+        batch_size = len(batch)
+        max_len = max(el.size(0) for el in batch)
+        tokens = torch.empty(
+            (
+                batch_size,
+                max_len + int(self.apply_bos) + int(self.apply_eos) # eos and bos
+            ),
+            dtype=torch.int64,
+        ).fill_(self.dictionary.pad())
 
-#         if self.apply_bos:
-#             tokens[:, 0] = self.dictionary.bos()
+        if self.apply_bos:
+            tokens[:, 0] = self.dictionary.bos()
 
-#         for idx, el in enumerate(batch):
-#             tokens[idx, int(self.apply_bos):(el.size(0) + int(self.apply_bos))] = el
+        for idx, el in enumerate(batch):
+            tokens[idx, int(self.apply_bos):(el.size(0) + int(self.apply_bos))] = el
 
-#             # import pdb; pdb.set_trace()
-#             if self.apply_eos:
-#                 tokens[idx, el.size(0) + int(self.apply_bos)] = self.dictionary.eos()
+            # import pdb; pdb.set_trace()
+            if self.apply_eos:
+                tokens[idx, el.size(0) + int(self.apply_bos)] = self.dictionary.eos()
         
-#         return tokens
+        return tokens
 
     def collater(self, batch):
         if isinstance(batch, list) and torch.is_tensor(batch[0]):
