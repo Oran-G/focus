@@ -316,6 +316,7 @@ class RebaseT5(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
+        mask = (batch['seq'] != self.dictionary.pad()).int()
         
         pred = self.ifmodel(batch['coords']).logits
         loss = self.loss(pred, batch['seq'])
