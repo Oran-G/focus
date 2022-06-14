@@ -74,7 +74,7 @@ class CSVDataset(Dataset):
 
 
 
-class SupervisedRebaseDataset(BaseWrapperDataset):
+# class SupervisedRebaseDataset(BaseWrapperDataset):
     '''
     Filters a rebased dataset for entries that have supervised labels
     '''
@@ -147,7 +147,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
-        structure = esm.inverse_folding.util.load_structure(fpath, chain_id)
+        structure = esm.inverse_folding.util.load_structure(self.dataset[idx]['id'], 'A')
         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
 
         return {
