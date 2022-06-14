@@ -219,7 +219,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
 class InlineDictionary(Dictionary):
     @classmethod
-    def from_list(cls, lst: List[str]):
+    def from_list(cls, lst): #: List[str]s
         d = cls()
         for idx, word in enumerate(lst):
             count = len(lst) - idx
