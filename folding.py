@@ -158,7 +158,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         }
     def __len__(self):
         return len(self.dataset)
-    def collate_tensors(self, batch):
+    def collate_tensors(self, batch: List[torch.tensor]):
         batch_size = len(batch)
         max_len = max(el.size(0) for el in batch)
         tokens = torch.empty(
@@ -186,7 +186,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             return self.collate_tensors(batch)
         else:
             return self.collate_dicts(batch)
-    def collate_dicts(self, batch): # : List[Dict[str, torch.tensor]]
+    def collate_dicts(self, batch: List[Dict[str, torch.tensor]]): # : List[Dict[str, torch.tensor]]
         '''
         combine sequences of the form
         [
@@ -207,7 +207,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         applying the padding correctly to capture different lengths
         '''
 
-        def select_by_key(lst, key): #: List[Dict]
+        def select_by_key(lst, key: List[Dict]): #: List[Dict]
             return [el[key] for el in lst]
 
         return {
@@ -219,15 +219,15 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
 class InlineDictionary(Dictionary):
     @classmethod
-    def from_list(cls, lst): #: List[str]s
+    def from_list(cls, lst: List[str]s): #
         d = cls()
         for idx, word in enumerate(lst):
             count = len(lst) - idx
             d.add_symbol(word, n=count, overwrite=False)
         return d
 
-# def accuracy(predict:torch.tensor, label:torch.tensor, mask:torch.tensor):
-def accuracy(predict, label, mask):
+def accuracy(predict:torch.tensor, label:torch.tensor, mask:torch.tensor):
+# def accuracy(predict, label, mask):
     first = (predict==label).int()
     second = first*mask
     return second.sum()/mask.sum()
@@ -332,7 +332,7 @@ class RebaseT5(pl.LightningModule):
         # import pdb; pdb.set_trace()
 
         self.log('val_loss', float(loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        # self.log('val_acc', float(accuracy([pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int()), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy([pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         return {
             'loss': loss,
@@ -454,7 +454,7 @@ class RebaseT5(pl.LightningModule):
                     'predicted': self.dictionary.string(output['logits'].argmax(-1)[i])})
                     
 @hydra.main(config_path='configs', config_name='defaults')
-def main(cfg): #: DictConfig       -> None
+def main(cfg: DictConfig )-> None: #: DictConfig       -> None
     print(OmegaConf.to_yaml(cfg))
     
     model = RebaseT5(cfg)
