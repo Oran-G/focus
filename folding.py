@@ -186,7 +186,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             return self.collate_tensors(batch)
         else:
             return self.collate_dicts(batch)
-    def collate_dicts(self, batch: List[Dict[str, torch.tensor]]):
+    def collate_dicts(self, batch): # : List[Dict[str, torch.tensor]]
         '''
         combine sequences of the form
         [
@@ -207,7 +207,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         applying the padding correctly to capture different lengths
         '''
 
-        def select_by_key(lst: List[Dict], key):
+        def select_by_key(lst, key): #: List[Dict]
             return [el[key] for el in lst]
 
         return {
@@ -226,7 +226,8 @@ class InlineDictionary(Dictionary):
             d.add_symbol(word, n=count, overwrite=False)
         return d
 
-def accuracy(predict:torch.tensor, label:torch.tensor, mask:torch.tensor):
+# def accuracy(predict:torch.tensor, label:torch.tensor, mask:torch.tensor):
+def accuracy(predict, label, mask):
     first = (predict==label).int()
     second = first*mask
     return second.sum()/mask.sum()
