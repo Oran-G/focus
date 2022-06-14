@@ -158,7 +158,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         }
     def __len__(self):
         return len(self.dataset)
-    def collate_tensors(self, batch):
+    def collate_tensors(self, batch: List[torch.tensor]):
         batch_size = len(batch)
         max_len = max(el.size(0) for el in batch)
         tokens = torch.empty(
