@@ -75,111 +75,111 @@ class CSVDataset(Dataset):
 
 
 # class SupervisedRebaseDataset(BaseWrapperDataset):
-    '''
-    Filters a rebased dataset for entries that have supervised labels
-    '''
-    def __init__(self, dataset: FastaDataset):
-        super().__init__(dataset)
-        # print(len(dataset))
-        self.filtered_indices = []
+#     '''
+#     Filters a rebased dataset for entries that have supervised labels
+#     '''
+#     def __init__(self, dataset: FastaDataset):
+#         super().__init__(dataset)
+#         # print(len(dataset))
+#         self.filtered_indices = []
 
-        # example desc: ['>AacAA1ORF2951P', 'GATATC', '280', 'aa']
-        self.dna_element = 1 # element in desc corresponding to the DNA
+#         # example desc: ['>AacAA1ORF2951P', 'GATATC', '280', 'aa']
+#         self.dna_element = 1 # element in desc corresponding to the DNA
 
-        def encodes_as_dna(s: str):
-            for c in s:
-                if c not in list(neucleotides.keys()):
-                    return False
-            return True
+#         def encodes_as_dna(s: str):
+#             for c in s:
+#                 if c not in list(neucleotides.keys()):
+#                     return False
+#             return True
 
-        # filter indicies which don't have supervised labels
-        for idx, (desc, seq) in enumerate(dataset):
-            # if len(desc.split()) == 4 and encodes_as_dna(desc.split()[self.dna_element]):
-            if len(desc.split(' ')) >= 2 and encodes_as_dna(desc.split(' ')[self.dna_element]):
-                self.filtered_indices.append(idx)
-        # print(len(self.dataset[0]))
-        # print(self.dataset[0])
-        # print('size:', len(self.filtered_indices))
+#         # filter indicies which don't have supervised labels
+#         for idx, (desc, seq) in enumerate(dataset):
+#             # if len(desc.split()) == 4 and encodes_as_dna(desc.split()[self.dna_element]):
+#             if len(desc.split(' ')) >= 2 and encodes_as_dna(desc.split(' ')[self.dna_element]):
+#                 self.filtered_indices.append(idx)
+#         # print(len(self.dataset[0]))
+#         # print(self.dataset[0])
+#         # print('size:', len(self.filtered_indices))
 
     
-    def __len__(self):
-        return len(self.filtered_indices)
+#     def __len__(self):
+#         return len(self.filtered_indices)
     
-    def __getitem__(self, idx):
-        # translate to our filtered indices
-        new_idx = self.filtered_indices[idx]
-        desc, seq = self.dataset[new_idx]
-        try:
-            return {
-                'seq': self.dataset[new_idx][1].replace(' ', ''),
-                'bind': self.dataset[new_idx][0].split(' ')[self.dna_element]
-                'name'
-            }     
-        except IndexError:
-            # print(new_idx)
-            # print({
-            #     'protein': self.dataset[new_idx][1].replace(' ', ''),
-            #     'dna': self.dataset[new_idx][0].split(' ')[self.dna_element]
-            # })
-            return {
-                'seq': self.dataset[new_idx][1].replace(' ', ''),
-                'bind': self.dataset[new_idx][0].split(' ')[self.dna_element]
-            }
-            # quit()
+#     def __getitem__(self, idx):
+#         # translate to our filtered indices
+#         new_idx = self.filtered_indices[idx]
+#         desc, seq = self.dataset[new_idx]
+#         try:
+#             return {
+#                 'seq': self.dataset[new_idx][1].replace(' ', ''),
+#                 'bind': self.dataset[new_idx][0].split(' ')[self.dna_element]
+#                 'name'
+#             }     
+#         except IndexError:
+#             # print(new_idx)
+#             # print({
+#             #     'protein': self.dataset[new_idx][1].replace(' ', ''),
+#             #     'dna': self.dataset[new_idx][0].split(' ')[self.dna_element]
+#             # })
+#             return {
+#                 'seq': self.dataset[new_idx][1].replace(' ', ''),
+#                 'bind': self.dataset[new_idx][0].split(' ')[self.dna_element]
+#             }
+#             # quit()
             
 
 
-class EncodedFastaDatasetWrapper(BaseWrapperDataset):
-    """
-    EncodedFastaDataset implemented as a wrapper
-    """
+# class EncodedFastaDatasetWrapper(BaseWrapperDataset):
+#     """
+#     EncodedFastaDataset implemented as a wrapper
+#     """
 
-    def __init__(self, dataset, dictionary, apply_bos=True, apply_eos=False):
-        '''
-        Options to apply bos and eos tokens.   will usually have eos already applied,
-        but won't have bos. Hence the defaults here.
-        '''
+#     def __init__(self, dataset, dictionary, apply_bos=True, apply_eos=False):
+#         '''
+#         Options to apply bos and eos tokens.   will usually have eos already applied,
+#         but won't have bos. Hence the defaults here.
+#         '''
 
-        super().__init__(dataset)
-        self.dictionary = dictionary
-        self.apply_bos = apply_bos
-        self.apply_eos = apply_eos
+#         super().__init__(dataset)
+#         self.dictionary = dictionary
+#         self.apply_bos = apply_bos
+#         self.apply_eos = apply_eos
 
-    def __getitem__(self, idx):
-        # desc, seq = self.dataset[idx]
-        structure = esm.inverse_folding.util.load_structure(self.dataset[idx]['id'], 'A')
-        coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
+#     def __getitem__(self, idx):
+#         # desc, seq = self.dataset[idx]
+#         structure = esm.inverse_folding.util.load_structure(self.dataset[idx]['id'], 'A')
+#         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
 
-        return {
-            # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
-            'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
-            'coords': coords,
-            'seq': seq
-        }
-    def __len__(self):
-        return len(self.dataset)
-    def collate_tensors(self, batch: List[torch.tensor]):
-        batch_size = len(batch)
-        max_len = max(el.size(0) for el in batch)
-        tokens = torch.empty(
-            (
-                batch_size,
-                max_len + int(self.apply_bos) + int(self.apply_eos) # eos and bos
-            ),
-            dtype=torch.int64,
-        ).fill_(self.dictionary.pad())
+#         return {
+#             # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
+#             'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
+#             'coords': coords,
+#             'seq': seq
+#         }
+#     def __len__(self):
+#         return len(self.dataset)
+#     def collate_tensors(self, batch: List[torch.tensor]):
+#         batch_size = len(batch)
+#         max_len = max(el.size(0) for el in batch)
+#         tokens = torch.empty(
+#             (
+#                 batch_size,
+#                 max_len + int(self.apply_bos) + int(self.apply_eos) # eos and bos
+#             ),
+#             dtype=torch.int64,
+#         ).fill_(self.dictionary.pad())
 
-        if self.apply_bos:
-            tokens[:, 0] = self.dictionary.bos()
+#         if self.apply_bos:
+#             tokens[:, 0] = self.dictionary.bos()
 
-        for idx, el in enumerate(batch):
-            tokens[idx, int(self.apply_bos):(el.size(0) + int(self.apply_bos))] = el
+#         for idx, el in enumerate(batch):
+#             tokens[idx, int(self.apply_bos):(el.size(0) + int(self.apply_bos))] = el
 
-            # import pdb; pdb.set_trace()
-            if self.apply_eos:
-                tokens[idx, el.size(0) + int(self.apply_bos)] = self.dictionary.eos()
+#             # import pdb; pdb.set_trace()
+#             if self.apply_eos:
+#                 tokens[idx, el.size(0) + int(self.apply_bos)] = self.dictionary.eos()
         
-        return tokens
+#         return tokens
 
     def collater(self, batch):
         if isinstance(batch, list) and torch.is_tensor(batch[0]):
@@ -297,6 +297,7 @@ class RebaseT5(pl.LightningModule):
         # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
         pred = self.ifmodel(batch['coords']).logits
         loss = self.loss(pred, batch['seq'])
+        
 
         import pdb; pdb.set_trace
 
@@ -315,17 +316,9 @@ class RebaseT5(pl.LightningModule):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
         
+        pred = self.ifmodel(batch['coords']).logits
+        loss = self.loss(pred, batch['seq'])
 
-        # import pdb; pdb.set_trace()
-        # 1 for tokens that are not masked; 0 for tokens that are masked
-        mask = (batch['seq'] != self.dictionary.pad()).int()
-        if self.hparams.esm.esm != False:
-
-            results = self.esm(batch['seq'], repr_layers=[int(self.hparams.esm.layers)], return_contacts=True)
-            token_representations = results["representations"][int(self.hparams.esm.layers)]
-            output = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
-        else:
-            output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
         
         
         # if True:
@@ -336,11 +329,11 @@ class RebaseT5(pl.LightningModule):
         # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # import pdb; pdb.set_trace()
 
-        self.log('val_loss', float(output.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(accuracy(output['logits'].argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_loss', float(loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy([pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         return {
-            'loss': output.loss,
+            'loss': loss,
             'batch_size': batch['seq'].size(0)
         }
     
