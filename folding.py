@@ -454,7 +454,7 @@ class RebaseT5(pl.LightningModule):
                     'predicted': self.dictionary.string(output['logits'].argmax(-1)[i])})
                     
 @hydra.main(config_path='configs', config_name='defaults')
-def main(cfg) -> None: #: DictConfig
+def main(cfg): #: DictConfig       -> None
     print(OmegaConf.to_yaml(cfg))
     
     model = RebaseT5(cfg)
