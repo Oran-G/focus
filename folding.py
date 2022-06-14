@@ -186,7 +186,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             return self.collate_tensors(batch)
         else:
             return self.collate_dicts(batch)
-    def collate_dicts(self, batch: List[Dict[str, torch.tensor]]): # : List[Dict[str, torch.tensor]]
+    def collate_dicts(self, batch: List[Dict[str, torch.tensor]]):
         '''
         combine sequences of the form
         [
@@ -207,7 +207,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         applying the padding correctly to capture different lengths
         '''
 
-        def select_by_key(lst, key: List[Dict]): #: List[Dict]
+        def select_by_key(lst: List[Dict], key):
             return [el[key] for el in lst]
 
         return {
@@ -219,7 +219,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
 class InlineDictionary(Dictionary):
     @classmethod
-    def from_list(cls, lst: List[str]s): #
+    def from_list(cls, lst: List[str]):
         d = cls()
         for idx, word in enumerate(lst):
             count = len(lst) - idx
@@ -227,7 +227,6 @@ class InlineDictionary(Dictionary):
         return d
 
 def accuracy(predict:torch.tensor, label:torch.tensor, mask:torch.tensor):
-# def accuracy(predict, label, mask):
     first = (predict==label).int()
     second = first*mask
     return second.sum()/mask.sum()
@@ -316,7 +315,6 @@ class RebaseT5(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
-        mask = (batch['seq'] != self.dictionary.pad()).int()
         
         pred = self.ifmodel(batch['coords']).logits
         loss = self.loss(pred, batch['seq'])
@@ -454,7 +452,7 @@ class RebaseT5(pl.LightningModule):
                     'predicted': self.dictionary.string(output['logits'].argmax(-1)[i])})
                     
 @hydra.main(config_path='configs', config_name='defaults')
-def main(cfg: DictConfig )-> None: #: DictConfig       -> None
+def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     
     model = RebaseT5(cfg)
