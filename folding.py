@@ -1,5 +1,6 @@
 import pdb; pdb.set_trace()
 import torch
+import torch.nn as nn
 import pytorch_lightning as pl
 from transformers import T5Config, T5ForConditionalGeneration, get_linear_schedule_with_warmup
 from fairseq.data import FastaDataset, EncodedFastaDataset, Dictionary, BaseWrapperDataset
