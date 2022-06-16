@@ -148,7 +148,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         self.dictionary = dictionary
         self.apply_bos = apply_bos
         self.apply_eos = apply_eos
-
+        self.ifalphabet = esm.pretrained.esm_if1_gvp4_t16_142M_UR50()[1]
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
         try:
@@ -162,13 +162,13 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         return {
             # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
             'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
-            'coords':torch.from_numpy( coords),
+            'coords': coords,
             'seq': self.dictionary.encode_line(seq, line_tokenizer=list, append_eos=False, add_if_not_exist=False).long()
         }
     def __len__(self):
         return len(self.dataset)
     def collate_tensors(self, batch: List[torch.tensor]):
-        if len(batch[0].size()) <= 2:
+        if batch[0].ndim <= 2:
             batch_size = len(batch)
             max_len = max(el.size(0) for el in batch)
             tokens = torch.empty(
@@ -191,7 +191,8 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             
             return tokens
         else:
-            return esm.inverse_folding.utils.from_lists(batch)[0]
+            bts = esm.inverse_folding.util.CoordBatchConverter(self.ifalphabet)
+            return bts.from_lists(batch)[0]
 
     def collater(self, batch):
         if isinstance(batch, list) and torch.is_tensor(batch[0]):
