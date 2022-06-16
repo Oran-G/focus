@@ -324,7 +324,7 @@ class RebaseT5(pl.LightningModule):
         loss = self.loss(pred, batch['seq'])
 
         
-        
+        import pdb; pdb.set_trace
         # if True:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         #     print(self.model.state_dict()['lm_head.weight'])
