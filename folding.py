@@ -153,7 +153,8 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         # desc, seq = self.dataset[idx]
         structure = esm.inverse_folding.util.load_structure(self.dataset[idx]['id'], 'A')
         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
-
+        print(self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long())
+        print(coords,seq)
         return {
             # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
             'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
