@@ -27,7 +27,7 @@ import pandas as pd
 import esm.inverse_folding
 import esm
 import torch_geometric
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 
 '''
 TODOs (10/17/21):
@@ -154,7 +154,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         try:
             structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb")
         except:
-            structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/HpyMKF10ORF92P/ranked_0.pdb")
+            structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/HpyMKF10ORF92P/ranked_0.pdb", 'A')
         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
         # print(self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long())
         # print(coords,seq)
@@ -308,11 +308,12 @@ class RebaseT5(pl.LightningModule):
         # make sure you don't take gradients through ESM-1b; do torch.no_grad()
         # alternatively, you can do this in __init__: [for parameter in self.esm1b_model.paramters(): parmater.requires_grad=False]
         # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
-        pred = self.ifmodel(batch['coords']).logits
+        import pdb; pdb.set_trace()
+        pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         loss = self.loss(pred, batch['seq'])
         
 
-        import pdb; pdb.set_trace()
+        
 
         
         
@@ -328,12 +329,12 @@ class RebaseT5(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
-        
-        pred = self.ifmodel(batch['coords']).logits
+        import pdb; pdb.set_trace()
+        pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         loss = self.loss(pred, batch['seq'])
 
         
-        import pdb; pdb.set_trace()
+        
         # if True:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         #     print(self.model.state_dict()['lm_head.weight'])
