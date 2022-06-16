@@ -50,7 +50,7 @@ class CSVDataset(Dataset):
         def cat(x):
             return (x[:1023] if len(x) > 1024 else x)
         self.df['seq'] = self.df['seq'].apply(cat)
-        self.data = self.split(split)[['seq', 'id']].to_dict('records')
+        self.data = self.split(split)[['seq','bind', 'id']].to_dict('records')
     
         self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
         self.data =self.data
@@ -151,15 +151,19 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
-        structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb")
+        try:
+            structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb")
+        except:
+            structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/HpyMKF10ORF92P/ranked_0.pdb")
         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
-        print(self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long())
-        print(coords,seq)
+        # print(self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long())
+        # print(coords,seq)
+        # print(type(coords), type(seq))
         return {
             # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
             'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
-            'coords': coords,
-            'seq': seq
+            'coords':torch.from_numpy( coords),
+            'seq': self.dictionary.encode_line(seq, line_tokenizer=list, append_eos=False, add_if_not_exist=False).long()
         }
     def __len__(self):
         return len(self.dataset)
@@ -214,7 +218,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
         def select_by_key(lst: List[Dict], key):
             return [el[key] for el in lst]
-
+        print('collate')
         return {
             key: self.collate_tensors(
                 select_by_key(batch, key)
@@ -304,7 +308,7 @@ class RebaseT5(pl.LightningModule):
         loss = self.loss(pred, batch['seq'])
         
 
-        import pdb; pdb.set_trace
+        import pdb; pdb.set_trace()
 
         
         
@@ -325,7 +329,7 @@ class RebaseT5(pl.LightningModule):
         loss = self.loss(pred, batch['seq'])
 
         
-        import pdb; pdb.set_trace
+        import pdb; pdb.set_trace()
         # if True:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
         #     print(self.model.state_dict()['lm_head.weight'])
@@ -364,7 +368,7 @@ class RebaseT5(pl.LightningModule):
         )
 
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collater)
-
+        print('hi')
         return dataloader 
 
     def configure_optimizers(self):
@@ -482,6 +486,8 @@ def main(cfg: DictConfig) -> None:
         model.batch_size = 2
     if int(cfg.esm.layers) == 34:
         model.batch_size = 1
+
+    model.batch_size = 2
     print(model.batch_size)
     print(int(max(1, cfg.model.batch_size/model.batch_size)))
     trainer = pl.Trainer(
@@ -494,7 +500,7 @@ def main(cfg: DictConfig) -> None:
         # check_val_every_n_epoch=1000,
         # max_epochs=cfg.model.max_epochs,
         default_root_dir=cfg.io.checkpoints,
-        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(cfg.model.gpu))),
+        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(1))),
         precision=cfg.model.precision,
         accelerator='ddp',
         log_every_n_steps=5,
