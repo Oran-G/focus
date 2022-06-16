@@ -168,27 +168,30 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
     def __len__(self):
         return len(self.dataset)
     def collate_tensors(self, batch: List[torch.tensor]):
-        batch_size = len(batch)
-        max_len = max(el.size(0) for el in batch)
-        tokens = torch.empty(
-            (
-                batch_size,
-                max_len + int(self.apply_bos) + int(self.apply_eos) # eos and bos
-            ),
-            dtype=torch.int64,
-        ).fill_(self.dictionary.pad())
+        if len(batch[0].size()) <= 2:
+            batch_size = len(batch)
+            max_len = max(el.size(0) for el in batch)
+            tokens = torch.empty(
+                (
+                    batch_size,
+                    max_len + int(self.apply_bos) + int(self.apply_eos) # eos and bos
+                ),
+                dtype=torch.int64,
+            ).fill_(self.dictionary.pad())
 
-        if self.apply_bos:
-            tokens[:, 0] = self.dictionary.bos()
+            if self.apply_bos:
+                tokens[:, 0] = self.dictionary.bos()
 
-        for idx, el in enumerate(batch):
-            tokens[idx, int(self.apply_bos):(el.size(0) + int(self.apply_bos))] = el
+            for idx, el in enumerate(batch):
+                tokens[idx, int(self.apply_bos):(el.size(0) + int(self.apply_bos))] = el
 
-            # import pdb; pdb.set_trace()
-            if self.apply_eos:
-                tokens[idx, el.size(0) + int(self.apply_bos)] = self.dictionary.eos()
-        
-        return tokens
+                # import pdb; pdb.set_trace()
+                if self.apply_eos:
+                    tokens[idx, el.size(0) + int(self.apply_bos)] = self.dictionary.eos()
+            
+            return tokens
+        else:
+            return esm.inverse_folding.utils.from_lists(batch)[0]
 
     def collater(self, batch):
         if isinstance(batch, list) and torch.is_tensor(batch[0]):
