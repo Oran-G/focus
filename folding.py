@@ -151,7 +151,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
-        structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220428/output/{self.dataset[idx]['id']}/ranked_0.pdb")
+        structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb")
         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
         print(self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long())
         print(coords,seq)
