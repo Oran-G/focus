@@ -192,7 +192,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             return tokens
         else:
             bts = esm.inverse_folding.util.CoordBatchConverter(self.ifalphabet)
-            return bts.from_lists(batch)[0]
+            return bts.from_lists(batch)
 
     def collater(self, batch):
         if isinstance(batch, list) and torch.is_tensor(batch[0]):
