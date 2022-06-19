@@ -156,7 +156,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
         try:
-            structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb")
+            structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb", 'A')
         except:
             structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/HpyMKF10ORF92P/ranked_0.pdb", 'A')
         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
@@ -226,7 +226,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
         def select_by_key(lst: List[Dict], key):
             return [el[key] for el in lst]
-        print('collate')
+        # print('collate')
         return {
             key: self.collate_tensors(
                 select_by_key(batch, key)
@@ -314,6 +314,7 @@ class RebaseT5(pl.LightningModule):
         # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
         # import pdb; pdb.set_trace()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
+        torch.cuda.empty_cache()
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
         loss = self.loss(pred, batch['seq'])
         
@@ -338,6 +339,7 @@ class RebaseT5(pl.LightningModule):
         batch['bind'][label_mask] = -100
         # import pdb; pdb.set_trace()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
+        torch.cuda.empty_cache()
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
         loss = self.loss(pred, batch['seq'])
 
