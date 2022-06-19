@@ -319,7 +319,9 @@ class RebaseT5(pl.LightningModule):
         
         
         self.log('train_loss', float(loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('train_acc',float(accuracy(pred.argmax(-2), batch['seq'], (batch['seq'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+
+        # self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
         return {
@@ -346,7 +348,8 @@ class RebaseT5(pl.LightningModule):
         # import pdb; pdb.set_trace()
 
         self.log('val_loss', float(loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy(pred.argmax(-2), batch['seq'], (batch['seq'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        # self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         return {
             'loss': loss,
