@@ -308,8 +308,9 @@ class RebaseT5(pl.LightningModule):
         # make sure you don't take gradients through ESM-1b; do torch.no_grad()
         # alternatively, you can do this in __init__: [for parameter in self.esm1b_model.paramters(): parmater.requires_grad=False]
         # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
-        import pdb; pdb.set_trace()
-        pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
+        # import pdb; pdb.set_trace()
+        # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
+        pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
         loss = self.loss(pred, batch['seq'])
         
 
@@ -329,8 +330,9 @@ class RebaseT5(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
-        import pdb; pdb.set_trace()
-        pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
+        # import pdb; pdb.set_trace()
+        # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
+        pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
         loss = self.loss(pred, batch['seq'])
 
         
