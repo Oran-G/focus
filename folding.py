@@ -28,6 +28,7 @@ import esm.inverse_folding
 import esm
 import torch_geometric
 # import pdb; pdb.set_trace()
+from GPUtil import showUtilization as gpu_usage
 
 '''
 TODOs (10/17/21):
@@ -313,7 +314,7 @@ class RebaseT5(pl.LightningModule):
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
         loss = self.loss(pred, batch['seq'])
         
-
+        gpu_usage()         
         
 
         
@@ -337,7 +338,7 @@ class RebaseT5(pl.LightningModule):
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
         loss = self.loss(pred, batch['seq'])
 
-        
+        gpu_usage()
         
         # if True:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
@@ -367,7 +368,8 @@ class RebaseT5(pl.LightningModule):
         # import pdb; pdb.set_trace()
 
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=1, collate_fn=dataset.collater)
-
+        print('train loader')
+        gpu_usage()
         return dataloader
     def val_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
@@ -376,7 +378,8 @@ class RebaseT5(pl.LightningModule):
             apply_eos=True,
             apply_bos=False,
         )
-
+        print('val loader')
+        gpu_usage()
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collater)
         print('hi')
         return dataloader 
