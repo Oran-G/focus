@@ -30,6 +30,9 @@ import torch_geometric
 # import pdb; pdb.set_trace()
 from GPUtil import showUtilization as gpu_usage
 
+
+from pl_bolts.datamodules.async_dataloader import AsynchronousLoader
+
 '''
 TODOs (10/17/21):
 * figure out reasonable train/valid set
@@ -367,7 +370,7 @@ class RebaseT5(pl.LightningModule):
         )
         # import pdb; pdb.set_trace()
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=1, collate_fn=dataset.collater)
+        dataloader = AsynchronousLoader(DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=1, collate_fn=dataset.collater), device=self.device)
         print('train loader')
         gpu_usage()
         return dataloader
@@ -379,8 +382,9 @@ class RebaseT5(pl.LightningModule):
             apply_bos=False,
         )
         print('val loader')
+        
+        dataloader = AsynchronousLoader(DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collater), device=self.device)
         gpu_usage()
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collater)
         print('hi')
         return dataloader 
 
@@ -513,7 +517,7 @@ def main(cfg: DictConfig) -> None:
         # check_val_every_n_epoch=1000,
         # max_epochs=cfg.model.max_epochs,
         default_root_dir=cfg.io.checkpoints,
-        # accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(1))),
+        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(1))),
         precision=cfg.model.precision,
         accelerator='ddp',
         log_every_n_steps=5,
