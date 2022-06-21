@@ -312,13 +312,14 @@ class RebaseT5(pl.LightningModule):
         # make sure you don't take gradients through ESM-1b; do torch.no_grad()
         # alternatively, you can do this in __init__: [for parameter in self.esm1b_model.paramters(): parmater.requires_grad=False]
         # pass that ESM-1b hidden states into self.model(..., encoder_outputs=...)
-        # import pdb; pdb.set_trace()
+        # print(torch.cuda.memory_summary(device=None, abbreviated=True))
+        #import pdb; pdb.set_trace()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         torch.cuda.empty_cache()
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
         loss = self.loss(pred, batch['seq'])
         
-        gpu_usage()         
+       # gpu_usage()         
         
 
         
@@ -342,8 +343,9 @@ class RebaseT5(pl.LightningModule):
         torch.cuda.empty_cache()
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
         loss = self.loss(pred, batch['seq'])
+        
 
-        gpu_usage()
+        # gpu_usage()
         
         # if True:
         #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
@@ -373,8 +375,8 @@ class RebaseT5(pl.LightningModule):
         # import pdb; pdb.set_trace()
 
         dataloader = AsynchronousLoader(DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=1, collate_fn=dataset.collater), device=self.device)
-        print('train loader')
-        gpu_usage()
+        # print('train loader')
+        # gpu_usage()
         return dataloader
     def val_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
@@ -383,15 +385,15 @@ class RebaseT5(pl.LightningModule):
             apply_eos=True,
             apply_bos=False,
         )
-        print('val loader')
+        # print('val loader')
         
         dataloader = AsynchronousLoader(DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collater), device=self.device)
-        gpu_usage()
-        print('hi')
+        # gpu_usage()
+        # print('hi')
         return dataloader 
 
     def configure_optimizers(self):
-        opt = torch.optim.AdamW(self.model.parameters(), lr=self.hparams.model.lr)
+        opt = torch.optim.AdamW(self.ifmodel.parameters(), lr=self.hparams.model.lr)
         # return opt
 
         # figure out reaosnable number of total steps
