@@ -160,18 +160,25 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         except:
             structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/HpyMKF10ORF92P/ranked_0.pdb", 'A')
         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
+        #print(seq)
         # print(self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long())
         # print(coords,seq)
         # print(type(coords), type(seq))
         return {
             # 'seq': self.dictionary.encode_line(self.dataset[idx]['seq'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
-            'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
+            # 'bind': self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long(),
+            'bind':torch.tensor( self.ifalphabet.encode(self.dataset[idx]['bind'])),
             'coords': coords,
-            'seq': self.dictionary.encode_line(seq, line_tokenizer=list, append_eos=False, add_if_not_exist=False).long()
+            # 'seq': self.dictionary.encode_line(seq, line_tokenizer=list, append_eos=False, add_if_not_exist=False).long()
+            'seq':torch.tensor(self.ifalphabet.encode(seq))
         }
+
     def __len__(self):
         return len(self.dataset)
     def collate_tensors(self, batch: List[torch.tensor]):
+        # import pdb; pdb.set_trace()
+        #print(batch)
+        #quit()
         if batch[0].ndim <= 2:
             batch_size = len(batch)
             max_len = max(el.size(0) for el in batch)
@@ -298,7 +305,7 @@ class RebaseT5(pl.LightningModule):
         batch['bind'][label_mask] = -100
         
 
-        # import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         # 1 for tokens that are not masked; 0 for tokens that are masked
         mask = (batch['seq'] != self.dictionary.pad()).int()
 
@@ -317,15 +324,33 @@ class RebaseT5(pl.LightningModule):
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         torch.cuda.empty_cache()
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
-        loss = self.loss(pred, batch['seq'])
-        
+        #loss = self.loss(pred, batch['bind'])
+        if True:
+            bm = ''
+            for i in range(pred.shape[2] - batch['bind'].shape[1] - 1):
+                bm+="<mask>"
+            #print(pred.shape[2] - batch['bind'].shape[1])
+            #bm.append("<mask>" for _ in range(pred.shape[1] - batch['bind'].shape[1]))
+            #bind_mask = torch.tensor(self.ifalphabet.encode(["<mask>" for _ in range(pred.shape[2] - batch['bind'].shape[1])]))
+            bind_mask = torch.tensor(self.ifalphabet.encode(bm)).to(self.device)
+            binds = []
+            for i in range(batch['bind'].shape[0]):
+                binds.append(torch.cat((batch['bind'][i], bind_mask)))
+            bind = self.dataset.collate_tensors(binds)
+        #print(bind)
+        #print(bind.shape)
+        bind = bind.to(self.device)
+        loss = self.loss(pred.to(self.device), bind.to(self.device))
+        #print((bind != self.ifalphabet.mask_idx).int())
+        #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
+        #quit()
        # gpu_usage()         
         
 
         
         
         self.log('train_loss', float(loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(accuracy(pred.argmax(-2), batch['seq'], (batch['seq'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('train_acc',float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
 
         # self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
@@ -336,15 +361,36 @@ class RebaseT5(pl.LightningModule):
         }
     
     def validation_step(self, batch, batch_idx):
-        label_mask = (batch['bind'] == self.dictionary.pad())
-        batch['bind'][label_mask] = -100
-        # import pdb; pdb.set_trace()
+        print('start of validation loop')
+        # label_mask = (batch['bind'] == self.dictionary.pad())
+        # batch['bind'][label_mask] = -100
+        #import pdb; pdb.set_trace()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         torch.cuda.empty_cache()
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
-        loss = self.loss(pred, batch['seq'])
-        
-
+        bind = batch['bind']
+        #if pred.shape[2] > batch['bind'].shape[1]:
+        #print(pred.shape, bind.shape)
+        #print(self.device)
+        if True:
+            bm = ''
+            for i in range(pred.shape[2] - batch['bind'].shape[1] - 1):
+                bm+="<mask>"
+            #print(pred.shape[2] - batch['bind'].shape[1])
+            #bm.append("<mask>" for _ in range(pred.shape[1] - batch['bind'].shape[1]))
+            #bind_mask = torch.tensor(self.ifalphabet.encode(["<mask>" for _ in range(pred.shape[2] - batch['bind'].shape[1])]))
+            bind_mask = torch.tensor(self.ifalphabet.encode(bm)).to(self.device)
+            binds = []
+            for i in range(batch['bind'].shape[0]):
+                binds.append(torch.cat((batch['bind'][i], bind_mask)))
+            bind = self.dataset.collate_tensors(binds)
+        #print(bind)
+        #print(bind.shape)
+        bind = bind.to(self.device)
+        loss = self.loss(pred.to(self.device), bind.to(self.device))
+        #print((bind != self.ifalphabet.mask_idx).int())
+        #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
+        #quit()
         # gpu_usage()
         
         # if True:
@@ -356,7 +402,7 @@ class RebaseT5(pl.LightningModule):
         # import pdb; pdb.set_trace()
 
         self.log('val_loss', float(loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(accuracy(pred.argmax(-2), batch['seq'], (batch['seq'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         return {
@@ -386,7 +432,7 @@ class RebaseT5(pl.LightningModule):
             apply_bos=False,
         )
         # print('val loader')
-        
+        self.dataset = dataset        
         dataloader = AsynchronousLoader(DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collater), device=self.device)
         # gpu_usage()
         # print('hi')
@@ -424,6 +470,8 @@ class RebaseT5(pl.LightningModule):
         else:
             return opt
     
+
+
     def test_step(self, batch, batch_idx):
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
@@ -524,6 +572,7 @@ def main(cfg: DictConfig) -> None:
         accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(1))),
         precision=cfg.model.precision,
         accelerator='ddp',
+        #accelerator='cpu',
         log_every_n_steps=5,
 
         )
