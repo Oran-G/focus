@@ -32,7 +32,8 @@ from GPUtil import showUtilization as gpu_usage
 
 
 from pl_bolts.datamodules.async_dataloader import AsynchronousLoader
-
+import os
+import json
 '''
 TODOs (10/17/21):
 * figure out reasonable train/valid set
@@ -42,7 +43,7 @@ TODOs (10/17/21):
 '''
 
 class CSVDataset(Dataset):
-    def __init__(self, csv_path, split, split_seed=42, supervised=True):
+    def __init__(self, csv_path, split, split_seed=42, supervised=True,plddt=85):
         super().__init__()
         self.df = pd.read_csv(csv_path)
         # print(self.df)
@@ -54,6 +55,17 @@ class CSVDataset(Dataset):
         def cat(x):
             return (x[:1023] if len(x) > 1024 else x)
         self.df['seq'] = self.df['seq'].apply(cat)
+        print("pre alpha",len(self.df))
+        def alpha(ids):
+            return os.path.isfile(f'/vast/og2114/rebase/20220519/output/{ids}/ranked_0.pdb')
+        self.df  = self.df[self.df['id'].apply(alpha) ==True ]
+        print("after alpha",len(self.df))
+        print("pre beta",len(self.df))
+        def beta(ids):
+            return  max(json.load(open(f'/vast/og2114/rebase/20220519/output/{ids}/ranking_debug.json'))['plddts'].values()) >= plddt
+        self.df  = self.df[self.df['id'].apply(beta) ==True ]
+        print("after beta",len(self.df))
+
         self.data = self.split(split)[['seq','bind', 'id']].to_dict('records')
     
         self.data = [x for x in self.data if x not in self.data[16*711:16*714]]
@@ -69,7 +81,9 @@ class CSVDataset(Dataset):
         if split.lower() == 'train':
             # print(len(self.df[0:int(.7*len(self.df))]))
             # return self.df[0:int(.7*len(self.df))]
-            return self.df[self.df['split'] == 0]
+            tmp = self.df[self.df['split'] != 1]
+            return tmp[tmp['split'] != 2]
+        
         elif split.lower() == 'val':
             # print(len(self.df[int(.7*len(self.df)):int(.85*len(self.df))]))
             
@@ -155,10 +169,9 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         self.ifalphabet = esm.pretrained.esm_if1_gvp4_t16_142M_UR50()[1]
     def __getitem__(self, idx):
         # desc, seq = self.dataset[idx]
-        try:
-            structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb", 'A')
-        except:
-            structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/HpyMKF10ORF92P/ranked_0.pdb", 'A')
+        
+        structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb", 'A')
+
         coords, seq = esm.inverse_folding.util.extract_coords_from_structure(structure)
         #print(seq)
         # print(self.dictionary.encode_line(self.dataset[idx]['bind'], line_tokenizer=list, append_eos=False, add_if_not_exist=False).long())
