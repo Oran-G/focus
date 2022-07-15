@@ -30,7 +30,7 @@ import torch_geometric
 # import pdb; pdb.set_trace()
 from GPUtil import showUtilization as gpu_usage
 
-
+import time
 from pl_bolts.datamodules.async_dataloader import AsynchronousLoader
 import os
 import json
@@ -314,12 +314,17 @@ class RebaseT5(pl.LightningModule):
 
 
     def training_step(self, batch, batch_idx):
+        if self.global_step  != 0:
+            print('lr')
+            self.lr_schedulers().step()
+
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
         
 
         #import pdb; pdb.set_trace()
         # 1 for tokens that are not masked; 0 for tokens that are masked
+        start_time  = time.time()
         mask = (batch['seq'] != self.dictionary.pad()).int()
 
 
@@ -364,7 +369,7 @@ class RebaseT5(pl.LightningModule):
         
         self.log('train_loss', float(loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('train_acc',float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-
+        self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         # self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
@@ -378,6 +383,7 @@ class RebaseT5(pl.LightningModule):
         # label_mask = (batch['bind'] == self.dictionary.pad())
         # batch['bind'][label_mask] = -100
         #import pdb; pdb.set_trace()
+        start_time = time.time()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         torch.cuda.empty_cache()
         pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
@@ -418,6 +424,7 @@ class RebaseT5(pl.LightningModule):
         self.log('val_acc', float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
             'loss': loss,
             'batch_size': batch['seq'].size(0)
@@ -439,7 +446,7 @@ class RebaseT5(pl.LightningModule):
         return dataloader
     def val_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
-            CSVDataset(self.cfg.io.final, 'train'),
+            CSVDataset(self.cfg.io.final, 'val'),
             self.dictionary,
             apply_eos=True,
             apply_bos=False,
@@ -465,8 +472,8 @@ class RebaseT5(pl.LightningModule):
                 'optimizer': opt,
                 'lr_scheduler': get_linear_schedule_with_warmup(
                     optimizer=opt,
-                    num_training_steps=10000,
-                    num_warmup_steps=400,
+                    num_training_steps=600000,
+                    num_warmup_steps=15000,
                 )
             }
             # return {
@@ -483,66 +490,57 @@ class RebaseT5(pl.LightningModule):
         else:
             return opt
     
-
-
     def test_step(self, batch, batch_idx):
-        label_mask = (batch['bind'] == self.dictionary.pad())
-        batch['bind'][label_mask] = -100
+        if True:
+            print(batch['bind'])
+            label_mask = (batch['bind'] == self.dictionary.pad())
+            batch['bind'][label_mask] = -100
 
-        mask = (batch['seq'] != self.dictionary.pad()).int()
-        if self.hparams.esm.esm != False:
+            torch.cuda.empty_cache()
+            pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]
+            # import pdb; pdb.set_trace()
+            # 1 for tokens that are not masked; 0 for tokens that are masked
+            mask = (batch['seq'] != self.dictionary.pad()).int()
 
-            results = self.esm(batch['seq'], repr_layers=[int(self.hparams.esm.layers)], return_contacts=True)
-            token_representations = results["representations"][int(self.hparams.esm.layers)]
-            output = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
-        else:
-            output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
+            for i in range(batch['seq'].shape[0]):
+                print((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0])
+                lastidx = -1 if len((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)) == 0 else (pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]
+                import pdb; pdb.set_trace()
+                self.test_data.append({'seq': self.decode(batch['seq'][i].tolist()),
+                    'bind': self.decode(batch['bind'][i].tolist()),
+                    'predicted': self.decode(output['logits'].argmax(-1)[i].tolist()[:lastidx])})
 
-        for i in range(batch['seq'].shape[0]):
-            # print(batch['bind'][i])
-            # print((batch['bind'][i] == self.dictionary.eos_index).nonzero(as_tuple=True)[0])
-            try:
-                self.test_data.append({'seq': self.dictionary.string(batch['seq'][i][:(batch['seq'][i] == self.dictionary.eos_index).nonzero(as_tuple=True)[0]]), 
-                    'bind': self.dictionary.string(batch['bind'][i][:(batch['bind'][i] == self.dictionary.eos_index).nonzero(as_tuple=True)[0]]), 
-                    'predicted': self.dictionary.string(output['logits'].argmax(-1)[i][:(output['logits'].argmax(-1)[i] == self.dictionary.eos_index).nonzero(as_tuple=True) [0]])})
-            except:
-                try:
-                    self.test_data.append({'seq': self.dictionary.string(batch['seq'][i][:(batch['seq'][i] == self.dictionary.eos_index).nonzero(as_tuple=True)[0]]), 
-                        'bind': self.dictionary.string(batch['bind'][i][:(batch['bind'][i] == self.dictionary.eos_index).nonzero(as_tuple=True)[0]]), 
-                        'predicted': self.dictionary.string(output['logits'].argmax(-1)[i][:(output['logits'].argmax(-1)[i] == self.dictionary.eos_index).nonzero(as_tuple=True) [0][0]])})
-                except:
-                     self.test_data.append({'seq': self.dictionary.string(batch['seq'][i][:(batch['seq'][i] == self.dictionary.eos_index).nonzero(as_tuple=True)[0]]), 
-                        'bind': self.dictionary.string(batch['bind'][i][:(batch['bind'][i] == self.dictionary.eos_index).nonzero(as_tuple=True)[0]]), 
-                        'predicted': self.dictionary.string(output['logits'].argmax(-1)[i])})
-                
-            # print(self.test_data)
-            # quit()
     def val_test(self):
         alls = []
-        for batch in iter(self.val_dataloader()):
+        for idx, batch in iter(self.val_dataloader()):
             print(batch['bind'])
             label_mask = (batch['bind'] == self.dictionary.pad())
             batch['bind'][label_mask] = -100
             
-
+            torch.cuda.empty_cache()
+            pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]
             # import pdb; pdb.set_trace()
             # 1 for tokens that are not masked; 0 for tokens that are masked
             mask = (batch['seq'] != self.dictionary.pad()).int()
-            if self.hparams.esm.esm != False:
-
-                results = self.esm(batch['seq'], repr_layers=[int(self.hparams.esm.layers)], return_contacts=True)
-                token_representations = results["representations"][int(self.hparams.esm.layers)]
-                output = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
-            else:
-                output = self.model(input_ids=batch['seq'], attention_mask=mask, labels=batch['bind'])
+            
             for i in range(batch['seq'].shape[0]):
-                print((batch['bind'] == self.dictionary.eos_token_id).nonzero(as_tuple=True)[0])
-                quit()
-                alls.append({'seq': self.dictionary.string(batch['seq'][i]), 
-                    'bind': self.dictionary.string(batch['bind'][i]), 
-                    'predicted': self.dictionary.string(output['logits'].argmax(-1)[i])})
-                    
-@hydra.main(config_path='configs', config_name='defaults')
+                print((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0])
+                lastidx = -1 if len((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)) == 0 else (pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]
+                import pdb; pdb.set_trace()
+                alls.append({'seq': self.decode(batch['seq'][i].tolist()), 
+                    'bind': self.decode(batch['bind'][i].tolist()), 
+                    'predicted': self.decode(output['logits'].argmax(-1)[i].tolist()[:lastidx])})
+        return alls
+    def decode(self, seq):
+        # input -> [list] type token representation of sequence to be decoded
+        #output -> [string] of sequence decoded 
+        newseq = ''
+        for tok in len(seq):
+            newseq += str(self.ifalphabet.get_tok(tok))
+        return newseq
+    
+
+@hydra.main(version_base="1.2.0",config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     
