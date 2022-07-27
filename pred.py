@@ -30,7 +30,7 @@ def main(cfg: DictConfig) -> None:
     # print('init')
     # checkpoint = torch.load('/scratch/og2114/rebase/logs/Focus/21hjudcf/checkpoints/both_dff-128_dmodel-768_lr-0.001_batch-512.ckpt')
     # print(checkpoint.keys())
-    model = RebaseT5.load_from_checkpoint(checkpoint_path="/scratch/og2114/rebase/logs/Focus/kaqk82kl/checkpoints/acc-small_dff-64_dmodel-768_lr-0.001_batch-32.ckpt")
+    model = RebaseT5.load_from_checkpoint(checkpoint_path="/scratch/og2114/rebase/logs/Focus/vw1qopku/checkpoints/acc-small_dff-64_dmodel-768_lr-0.001_batch-32.ckpt")
     # model = RebaseT5.load_from_checkpoint(checkpoint_path='/scratch/og2114/rebase/logs/Focus/21hjudcf/checkpoints/both_dff-128_dmodel-768_lr-0.001_batch-512.ckpt')
     gpu = cfg.model.gpu
     cfg = model.hparams
@@ -68,9 +68,11 @@ def main(cfg: DictConfig) -> None:
         log_every_n_steps=5,
 
         )
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     model.to( torch.device("cuda:0" if torch.cuda.is_available() else "cpu"))
+    
     trainer.test(model, dataloaders=model.val_dataloader())
+    print(model.test_data)
     import csv
     dictionaries=model.test_data
     keys = dictionaries[0].keys()

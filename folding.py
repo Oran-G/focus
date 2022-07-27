@@ -34,6 +34,7 @@ import time
 from pl_bolts.datamodules.async_dataloader import AsynchronousLoader
 import os
 import json
+import wandb
 '''
 TODOs (10/17/21):
 * figure out reasonable train/valid set
@@ -310,14 +311,14 @@ class RebaseT5(pl.LightningModule):
         # self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
         self.test_data = []
         print('initialized')
-        self.loss = nn.CrossEntropyLoss()
-
+        #self.loss = nn.CrossEntropyLoss()
+        self.loss = nn.NLLLoss()
 
     def training_step(self, batch, batch_idx):
         if self.global_step  != 0:
-            print('lr')
+            #print('lr')
             self.lr_schedulers().step()
-
+        self.ifmodel.train()
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
         
@@ -358,7 +359,8 @@ class RebaseT5(pl.LightningModule):
         #print(bind)
         #print(bind.shape)
         bind = bind.to(self.device)
-        loss = self.loss(pred.to(self.device), bind.to(self.device))
+        #import pdb; pdb.set_trace()
+        loss = self.loss(torch.nn.functional.log_softmax(pred.to(self.device), dim=1), bind.to(self.device))
         #print((bind != self.ifalphabet.mask_idx).int())
         #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
         #quit()
@@ -379,7 +381,7 @@ class RebaseT5(pl.LightningModule):
         }
     
     def validation_step(self, batch, batch_idx):
-        print('start of validation loop')
+        #print('start of validation loop')
         # label_mask = (batch['bind'] == self.dictionary.pad())
         # batch['bind'][label_mask] = -100
         #import pdb; pdb.set_trace()
@@ -406,7 +408,7 @@ class RebaseT5(pl.LightningModule):
         #print(bind)
         #print(bind.shape)
         bind = bind.to(self.device)
-        loss = self.loss(pred.to(self.device), bind.to(self.device))
+        loss = self.loss(torch.nn.functional.log_softmax(pred.to(self.device), dim=1), bind.to(self.device))
         #print((bind != self.ifalphabet.mask_idx).int())
         #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
         #quit()
@@ -459,7 +461,7 @@ class RebaseT5(pl.LightningModule):
         return dataloader 
 
     def configure_optimizers(self):
-        opt = torch.optim.AdamW(self.ifmodel.parameters(), lr=self.hparams.model.lr)
+        opt = torch.optim.AdamW(self.ifmodel.parameters(), lr=.001)
         # return opt
 
         # figure out reaosnable number of total steps
@@ -472,8 +474,8 @@ class RebaseT5(pl.LightningModule):
                 'optimizer': opt,
                 'lr_scheduler': get_linear_schedule_with_warmup(
                     optimizer=opt,
-                    num_training_steps=600000,
-                    num_warmup_steps=15000,
+                    num_training_steps=200000,
+                    num_warmup_steps=3000,
                 )
             }
             # return {
@@ -503,13 +505,17 @@ class RebaseT5(pl.LightningModule):
             mask = (batch['seq'] != self.dictionary.pad()).int()
 
             for i in range(batch['seq'].shape[0]):
-                print((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0])
-                lastidx = -1 if len((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)) == 0 else (pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]
-                import pdb; pdb.set_trace()
-                self.test_data.append({'seq': self.decode(batch['seq'][i].tolist()),
-                    'bind': self.decode(batch['bind'][i].tolist()),
-                    'predicted': self.decode(output['logits'].argmax(-1)[i].tolist()[:lastidx])})
-
+                try:
+                    print((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0])
+                    lastidx = -1 if len((pred.argmax(-2)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (pred.argmax(-2)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
+                    print(lastidx)
+                    #import pdb; pdb.set_trace()
+                
+                    self.test_data.append({'seq': self.decode(batch['seq'][i].tolist()).split("<eos>")[0],
+                        'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]),
+                        'predicted': self.decode(pred.argmax(-2)[i].tolist()[:lastidx])})
+                except IndexError:
+                    import pdb; pdb.set_trace()
     def val_test(self):
         alls = []
         for idx, batch in iter(self.val_dataloader()):
@@ -526,20 +532,27 @@ class RebaseT5(pl.LightningModule):
             for i in range(batch['seq'].shape[0]):
                 print((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0])
                 lastidx = -1 if len((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)) == 0 else (pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]
+                print(lastidx)
                 import pdb; pdb.set_trace()
-                alls.append({'seq': self.decode(batch['seq'][i].tolist()), 
-                    'bind': self.decode(batch['bind'][i].tolist()), 
-                    'predicted': self.decode(output['logits'].argmax(-1)[i].tolist()[:lastidx])})
+                alls.append({'seq': self.decode(batch['seq'][i].tolist()).split("<eos>")[0], 
+                    'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]), 
+                    'predicted': self.decode(pred.argmax(-1)[i].tolist()[:lastidx])})
         return alls
     def decode(self, seq):
         # input -> [list] type token representation of sequence to be decoded
         #output -> [string] of sequence decoded 
         newseq = ''
-        for tok in len(seq):
+        for tok in seq:
             newseq += str(self.ifalphabet.get_tok(tok))
         return newseq
     
-
+    def training_epoch_end(self, training_step_outputs):
+        if self.trainer.current_epoch % 5 == 0:
+        # if False:
+            self.trainer.test(self, dataloaders=self.val_dataloader())
+            df1 = pd.DataFrame(self.test_data)
+            tbl = wandb.Table(dataframe=df1)
+            wandb.log({'validation_table': tbl})
 @hydra.main(version_base="1.2.0",config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
@@ -555,8 +568,8 @@ def main(cfg: DictConfig) -> None:
     cfg.model.gpu = gpu
     wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
     # wandb_logger.experiment.config.update(dict(cfg.model))
-    checkpoint_callback = ModelCheckpoint(monitor="val_loss", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
-    acc_callback = ModelCheckpoint(monitor="val_acc", filename=f'acc-{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True) 
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss_epoch", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True,save_top_k=5) 
+    acc_callback = ModelCheckpoint(monitor="val_acc_epoch", filename=f'acc-{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True, save_top_k=5) 
     lr_monitor = LearningRateMonitor(logging_interval='step')
     print(model.batch_size)
     print('tune: ')
@@ -580,12 +593,16 @@ def main(cfg: DictConfig) -> None:
         # check_val_every_n_epoch=1000,
         # max_epochs=cfg.model.max_epochs,
         default_root_dir=cfg.io.checkpoints,
-        accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(1))),
+        #accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(1))),
+        accumulate_grad_batches=4,
         precision=cfg.model.precision,
-        accelerator='ddp',
+        strategy='ddp',
         #accelerator='cpu',
         log_every_n_steps=5,
-
+        progress_bar_refresh_rate=100,
+        max_epochs=46,
+        #limit_train_batches=5,
+        auto_scale_batch_size="power",
         )
     trainer.fit(model)
     trainer.test(model, dataloaders=model.val_dataloader())
@@ -597,7 +614,10 @@ def main(cfg: DictConfig) -> None:
     dict_writer.writeheader()
     dict_writer.writerows(dictionaries)
     a_file.close()
-  
+    df1 = pd.DataFrame(dictionaries)
+    tbl = wandb.Table(dataframe=df1)
+    wandb.log({'final_table': tbl})
+    #orangeisstupid
     
 
 if __name__ == '__main__':
