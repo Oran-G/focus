@@ -319,14 +319,14 @@ class RebaseT5(pl.LightningModule):
             #print('lr')
             self.lr_schedulers().step()
         self.ifmodel.train()
-        label_mask = (batch['bind'] == self.dictionary.pad())
+        label_mask = (batch['bind'] == self.ifalphabet.padding_idx)
         batch['bind'][label_mask] = -100
         
 
         #import pdb; pdb.set_trace()
         # 1 for tokens that are not masked; 0 for tokens that are masked
         start_time  = time.time()
-        mask = (batch['seq'] != self.dictionary.pad()).int()
+        mask = (batch['seq'] != self.ifalphabet.padding_idx).int()
 
 
         # load ESM-1b in __init__(...)
@@ -342,7 +342,12 @@ class RebaseT5(pl.LightningModule):
         #import pdb; pdb.set_trace()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         torch.cuda.empty_cache()
-        pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
+        token_representations = self.ifmodel(batch['coords'][0],
+                confidence=batch['coords'][1], padding_mask=batch['coords'][4],
+                prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
+        
+        pred = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
+        
         #loss = self.loss(pred, batch['bind'])
         if True:
             bm = ''
@@ -383,12 +388,19 @@ class RebaseT5(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         #print('start of validation loop')
         # label_mask = (batch['bind'] == self.dictionary.pad())
+        label_mask = (batch['bind'] == self.ifalphabet.padding_idx)
         # batch['bind'][label_mask] = -100
         #import pdb; pdb.set_trace()
         start_time = time.time()
+        mask = (batch['seq'] != self.ifalphabet.padding_idx).int()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         torch.cuda.empty_cache()
-        pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
+        #pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
+        token_representations = self.ifmodel(batch['coords'][0],
+                confidence=batch['coords'][1], padding_mask=batch['coords'][4],
+                prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
+        import pdb; pdb.set_trace()
+        pred = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
         bind = batch['bind']
         #if pred.shape[2] > batch['bind'].shape[1]:
         #print(pred.shape, bind.shape)
