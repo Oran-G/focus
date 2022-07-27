@@ -346,12 +346,12 @@ class RebaseT5(pl.LightningModule):
                 confidence=batch['coords'][1], padding_mask=batch['coords'][4],
                 prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
         
-        pred = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], attention_mask=mask, labels=batch['bind'])
         
         #loss = self.loss(pred, batch['bind'])
         if True:
             bm = ''
-            for i in range(pred.shape[2] - batch['bind'].shape[1] - 1):
+            for i in range(pred['logits'].shape[2] - batch['bind'].shape[1] - 1):
                 bm+="<mask>"
             #print(pred.shape[2] - batch['bind'].shape[1])
             #bm.append("<mask>" for _ in range(pred.shape[1] - batch['bind'].shape[1]))
@@ -365,7 +365,7 @@ class RebaseT5(pl.LightningModule):
         #print(bind.shape)
         bind = bind.to(self.device)
         #import pdb; pdb.set_trace()
-        loss = self.loss(torch.nn.functional.log_softmax(pred.to(self.device), dim=1), bind.to(self.device))
+        # loss = self.loss(torch.nn.functional.log_softmax(pred.to(self.device), dim=1), bind.to(self.device))
         #print((bind != self.ifalphabet.mask_idx).int())
         #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
         #quit()
@@ -374,8 +374,8 @@ class RebaseT5(pl.LightningModule):
 
         
         
-        self.log('train_loss', float(loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('train_loss', float(pred.loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_acc',float(accuracy(pred.argmax(-1), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         # self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
@@ -400,14 +400,17 @@ class RebaseT5(pl.LightningModule):
                 confidence=batch['coords'][1], padding_mask=batch['coords'][4],
                 prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
         import pdb; pdb.set_trace()
-        pred = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], attention_mask=mask, labels=batch['bind']))
         bind = batch['bind']
         #if pred.shape[2] > batch['bind'].shape[1]:
         #print(pred.shape, bind.shape)
         #print(self.device)
+        
+        
+        
         if True:
             bm = ''
-            for i in range(pred.shape[2] - batch['bind'].shape[1] - 1):
+            for i in range(pred['logits'].shape[2] - batch['bind'].shape[1] - 1):
                 bm+="<mask>"
             #print(pred.shape[2] - batch['bind'].shape[1])
             #bm.append("<mask>" for _ in range(pred.shape[1] - batch['bind'].shape[1]))
@@ -420,7 +423,12 @@ class RebaseT5(pl.LightningModule):
         #print(bind)
         #print(bind.shape)
         bind = bind.to(self.device)
-        loss = self.loss(torch.nn.functional.log_softmax(pred.to(self.device), dim=1), bind.to(self.device))
+        # loss = self.loss(torch.nn.functional.log_softmax(pred.to(self.device), dim=1), bind.to(self.device))
+        
+        
+        
+        
+        
         #print((bind != self.ifalphabet.mask_idx).int())
         #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
         #quit()
@@ -434,8 +442,8 @@ class RebaseT5(pl.LightningModule):
         # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # import pdb; pdb.set_trace()
 
-        self.log('val_loss', float(loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_loss', float(pred.loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy(pred['logits'].argmax(-1), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
