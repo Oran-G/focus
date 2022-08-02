@@ -266,6 +266,9 @@ class RebaseT5(pl.LightningModule):
 
 
     def training_step(self, batch, batch_idx):
+        if self.global_step  != 0 and self.global_step % 4 == 0:
+            #print('lr')
+            self.lr_schedulers().step()
         label_mask = (batch['bind'] == self.dictionary.pad())
         batch['bind'][label_mask] = -100
         

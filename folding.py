@@ -342,16 +342,21 @@ class RebaseT5(pl.LightningModule):
         #import pdb; pdb.set_trace()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         torch.cuda.empty_cache()
-        token_representations = self.ifmodel(batch['coords'][0],
+        if self.trainer.current_epoch <= 0:
+            with torch.no_grad():
+                token_representations = self.ifmodel(batch['coords'][0],
+                    confidence=batch['coords'][1], padding_mask=batch['coords'][4],
+                    prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
+        else:
+            token_representations = self.ifmodel(batch['coords'][0],
                 confidence=batch['coords'][1], padding_mask=batch['coords'][4],
                 prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
-        
-        pred = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], attention_mask=mask, labels=batch['bind'])
         
         #loss = self.loss(pred, batch['bind'])
         if True:
             bm = ''
-            for i in range(pred.shape[2] - batch['bind'].shape[1] - 1):
+            for i in range(pred[1].shape[1] - batch['bind'].shape[1] - 1):
                 bm+="<mask>"
             #print(pred.shape[2] - batch['bind'].shape[1])
             #bm.append("<mask>" for _ in range(pred.shape[1] - batch['bind'].shape[1]))
@@ -365,7 +370,7 @@ class RebaseT5(pl.LightningModule):
         #print(bind.shape)
         bind = bind.to(self.device)
         #import pdb; pdb.set_trace()
-        loss = self.loss(torch.nn.functional.log_softmax(pred.to(self.device), dim=1), bind.to(self.device))
+        #loss = self.loss(torch.nn.functional.log_softmax(torch.transpose(pred[1].to(self.device), 1, 2), dim=1), bind.to(self.device))
         #print((bind != self.ifalphabet.mask_idx).int())
         #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
         #quit()
@@ -374,14 +379,15 @@ class RebaseT5(pl.LightningModule):
 
         
         
-        self.log('train_loss', float(loss), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('train_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_acc',float(accuracy(pred[1].argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('length', int(pred[1].shape[-2]),  on_step=True,  logger=True)
         self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         # self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
         return {
-            'loss': loss,
+            'loss': pred[0],
             'batch_size': batch['seq'].size(0)
         }
     
@@ -399,15 +405,15 @@ class RebaseT5(pl.LightningModule):
         token_representations = self.ifmodel(batch['coords'][0],
                 confidence=batch['coords'][1], padding_mask=batch['coords'][4],
                 prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
-        import pdb; pdb.set_trace()
-        pred = self.model(encoder_outputs=[token_representations], attention_mask=mask, labels=batch['bind'])
+        #import pdb; pdb.set_trace()
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], attention_mask=mask, labels=batch['bind'])
         bind = batch['bind']
         #if pred.shape[2] > batch['bind'].shape[1]:
         #print(pred.shape, bind.shape)
         #print(self.device)
         if True:
             bm = ''
-            for i in range(pred.shape[2] - batch['bind'].shape[1] - 1):
+            for i in range(pred[1].shape[1] - batch['bind'].shape[1] - 1):
                 bm+="<mask>"
             #print(pred.shape[2] - batch['bind'].shape[1])
             #bm.append("<mask>" for _ in range(pred.shape[1] - batch['bind'].shape[1]))
@@ -420,7 +426,7 @@ class RebaseT5(pl.LightningModule):
         #print(bind)
         #print(bind.shape)
         bind = bind.to(self.device)
-        loss = self.loss(torch.nn.functional.log_softmax(pred.to(self.device), dim=1), bind.to(self.device))
+        #loss = self.loss(torch.nn.functional.log_softmax(torch.transpose(pred[1].to(self.device), 1, 2), dim=1), bind.to(self.device))
         #print((bind != self.ifalphabet.mask_idx).int())
         #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
         #quit()
@@ -434,13 +440,13 @@ class RebaseT5(pl.LightningModule):
         # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # import pdb; pdb.set_trace()
 
-        self.log('val_loss', float(loss), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy(pred[1].argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
-            'loss': loss,
+            'loss': pred[0],
             'batch_size': batch['seq'].size(0)
         }
     
@@ -473,7 +479,11 @@ class RebaseT5(pl.LightningModule):
         return dataloader 
 
     def configure_optimizers(self):
-        opt = torch.optim.AdamW(self.ifmodel.parameters(), lr=.001)
+        opt = torch.optim.AdamW([
+                {'params': self.ifmodel.parameters()},  
+                {'params': self.model.parameters()}
+                ], 
+            lr=int(self.hparams.model.lr))
         # return opt
 
         # figure out reaosnable number of total steps
@@ -559,12 +569,12 @@ class RebaseT5(pl.LightningModule):
         return newseq
     
     def training_epoch_end(self, training_step_outputs):
-        if self.trainer.current_epoch % 5 == 0:
-        # if False:
+        #if self.trainer.current_epoch % 5 == 0:
+        if False:
             self.trainer.test(self, dataloaders=self.val_dataloader())
             df1 = pd.DataFrame(self.test_data)
-            tbl = wandb.Table(dataframe=df1)
-            wandb.log({'validation_table': tbl})
+            #tbl = wandb.Table(dataframe=df1)
+            #wandb.log({'validation_table': tbl})
 @hydra.main(version_base="1.2.0",config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
@@ -615,6 +625,7 @@ def main(cfg: DictConfig) -> None:
         max_epochs=46,
         #limit_train_batches=5,
         auto_scale_batch_size="power",
+        gradient_clip_val=0.5,
         )
     trainer.fit(model)
     trainer.test(model, dataloaders=model.val_dataloader())
