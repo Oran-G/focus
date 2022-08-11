@@ -342,7 +342,7 @@ class RebaseT5(pl.LightningModule):
         #import pdb; pdb.set_trace()
         # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
         torch.cuda.empty_cache()
-        if self.trainer.current_epoch <= 0:
+        if self.hparams.esm.esmgrad == False:
             with torch.no_grad():
                 token_representations = self.ifmodel(batch['coords'][0],
                     confidence=batch['coords'][1], padding_mask=batch['coords'][4],
@@ -378,11 +378,16 @@ class RebaseT5(pl.LightningModule):
         
 
         
-        
+        #import pdb; pdb.set_trace()
+        confs = self.conf(nn.functional.softmax(pred[1]))
+        self.log('top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('mean_conf', float(confs[2]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('train_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(accuracy(pred[1].argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('train_acc',float(accuracy(nn.functional.softmax(pred[1]).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('length', int(pred[1].shape[-2]),  on_step=True,  logger=True)
         self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        #import pdb; pdb.set_trace()
         # self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         
@@ -439,9 +444,28 @@ class RebaseT5(pl.LightningModule):
         # bind_accuracy[label_mask] = self.dictionary.pad()
         # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # import pdb; pdb.set_trace()
-
+        
+        for i in range(batch['seq'].shape[0]):
+            
+            try:
+                #import pdb; pdb.set_trace()
+                print((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0])
+                lastidx = -1 if len((pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
+                print(lastidx)
+                #import pdb; pdb.set_trace()
+                print(pred[1].argmax(-1).tolist()[:lastidx][0])
+                self.test_data.append({'seq': self.decode(batch['seq'][i].tolist()).split("<eos>")[0],
+                    'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]),
+                    'predicted': self.decode(pred[1].argmax(-1).tolist()[:lastidx][0])})
+            except IndexError:
+                print('Index Error')
+        confs = self.conf(nn.functional.softmax(pred[1]))
+        self.log('val_top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_mean_conf', float(confs[2]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        
         self.log('val_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(accuracy(pred[1].argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy(nn.functional.softmax(pred[1]).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
@@ -483,7 +507,7 @@ class RebaseT5(pl.LightningModule):
                 {'params': self.ifmodel.parameters()},  
                 {'params': self.model.parameters()}
                 ], 
-            lr=int(self.hparams.model.lr))
+            lr=float(self.hparams.model.lr))
         # return opt
 
         # figure out reaosnable number of total steps
@@ -496,8 +520,8 @@ class RebaseT5(pl.LightningModule):
                 'optimizer': opt,
                 'lr_scheduler': get_linear_schedule_with_warmup(
                     optimizer=opt,
-                    num_training_steps=200000,
-                    num_warmup_steps=3000,
+                    num_training_steps=400000,
+                    num_warmup_steps=6000,
                 )
             }
             # return {
@@ -537,7 +561,7 @@ class RebaseT5(pl.LightningModule):
                         'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]),
                         'predicted': self.decode(pred.argmax(-2)[i].tolist()[:lastidx])})
                 except IndexError:
-                    import pdb; pdb.set_trace()
+                    print('Index Error')
     def val_test(self):
         alls = []
         for idx, batch in iter(self.val_dataloader()):
@@ -568,11 +592,32 @@ class RebaseT5(pl.LightningModule):
             newseq += str(self.ifalphabet.get_tok(tok))
         return newseq
     
+    def conf(self, tens):
+        h1 = []
+        h2 = []
+        h3 = []
+        for i in range(tens.shape[0]):
+            
+            highs = torch.amax(tens[i], -1).tolist()
+            h1.append(max(highs))
+            h2.append(min(highs))
+            h3.append((sum(highs)/len(highs)))
+        return max(h1), min(h2), (sum(h3)/len(h3))
+
+
     def training_epoch_end(self, training_step_outputs):
         #if self.trainer.current_epoch % 5 == 0:
-        if False:
-            self.trainer.test(self, dataloaders=self.val_dataloader())
+        if True:
+            #self.trainer.test(self, dataloaders=self.val_dataloader())
             df1 = pd.DataFrame(self.test_data)
+            import csv
+            dictionaries=self.test_data
+            keys = dictionaries[0].keys()
+            a_file = open(f"/scratch/og2114/rebase/logs/slurm_{str(os.environ.get('SLURM_JOB_ID'))}/{self.trainer.current_epoch}-output.csv", "w")
+            dict_writer = csv.DictWriter(a_file, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(dictionaries)
+            print('hello')
             #tbl = wandb.Table(dataframe=df1)
             #wandb.log({'validation_table': tbl})
 @hydra.main(version_base="1.2.0",config_path='configs', config_name='defaults')
@@ -622,7 +667,7 @@ def main(cfg: DictConfig) -> None:
         #accelerator='cpu',
         log_every_n_steps=5,
         progress_bar_refresh_rate=100,
-        max_epochs=46,
+        max_epochs=92,
         #limit_train_batches=5,
         auto_scale_batch_size="power",
         gradient_clip_val=0.5,
