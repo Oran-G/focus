@@ -378,13 +378,13 @@ class RebaseT5(pl.LightningModule):
         
 
         
-        #import pdb; pdb.set_trace()
-        confs = self.conf(nn.functional.softmax(pred[1]))
+        import pdb; pdb.set_trace()
+        confs = self.conf(nn.functional.softmax(pred[1], dim=-1))
         self.log('top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('mean_conf', float(confs[2]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('train_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(accuracy(nn.functional.softmax(pred[1]).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('train_acc',float(accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.pad_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('length', int(pred[1].shape[-2]),  on_step=True,  logger=True)
         self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         #import pdb; pdb.set_trace()
@@ -459,13 +459,14 @@ class RebaseT5(pl.LightningModule):
                     'predicted': self.decode(pred[1].argmax(-1).tolist()[:lastidx][0])})
             except IndexError:
                 print('Index Error')
-        confs = self.conf(nn.functional.softmax(pred[1]))
+        import pdb; pdb.set_trace()
+        confs = self.conf(nn.functional.softmax(pred[1], dim=-1))
         self.log('val_top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('val_low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('val_mean_conf', float(confs[2]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         self.log('val_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(accuracy(nn.functional.softmax(pred[1]).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.mask_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.pad_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
@@ -592,13 +593,13 @@ class RebaseT5(pl.LightningModule):
             newseq += str(self.ifalphabet.get_tok(tok))
         return newseq
     
-    def conf(self, tens):
+    def conf(self, tens, target):
         h1 = []
         h2 = []
         h3 = []
         for i in range(tens.shape[0]):
-            
-            highs = torch.amax(tens[i], -1).tolist()
+            lastidx = -1 if len((tens.argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (tens.argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
+            highs = (torch.amax(tens[i], -1)[:lastidx]* ((tens[i].argmax(-1)[:lastidx]==target[i][:lastidx]).int())).tolist()
             h1.append(max(highs))
             h2.append(min(highs))
             h3.append((sum(highs)/len(highs)))
@@ -647,7 +648,7 @@ def main(cfg: DictConfig) -> None:
     if int(cfg.esm.layers) == 34:
         model.batch_size = 1
 
-    model.batch_size = 2
+    #model.batch_size = 2
     print(model.batch_size)
     print(int(max(1, cfg.model.batch_size/model.batch_size)))
     trainer = pl.Trainer(
@@ -660,7 +661,7 @@ def main(cfg: DictConfig) -> None:
         # check_val_every_n_epoch=1000,
         # max_epochs=cfg.model.max_epochs,
         default_root_dir=cfg.io.checkpoints,
-        #accumulate_grad_batches=int(max(1, cfg.model.batch_size/model.batch_size/int(1))),
+        accumulate_grad_batches=int(max(1, 64/model.batch_size/int(1))),
         accumulate_grad_batches=4,
         precision=cfg.model.precision,
         strategy='ddp',
