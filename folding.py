@@ -217,13 +217,13 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         pre_proccessed_coords = self.batch_converter_coords.from_lists(select_by_key(batch, 'coords'))
         
         post_proccessed = {
-            'bind': self.collate_tensors(select_by_key(batch, 'bind'), bos=False, eos=True)
-            'bos_bind': self.collate_tensors(select_by_key(batch, 'bind'), bos=True, eos=True)
-            'coords': pre_proccessed_coords[0]
-            'seq': self.collate_tensors(select_by_key(batch, 'seq'), bos=False, eos=True)
-            'bos_seq': self.collate_tensors(select_by_key(batch, 'seq'), bos=True, eos=True)
-            'coord_conf': pre_proccessed_coords[1]
-            'coord_pad' pre_proccessed_coords[4]
+            'bind': self.collate_tensors(select_by_key(batch, 'bind'), bos=False, eos=True),
+            'bos_bind': self.collate_tensors(select_by_key(batch, 'bind'), bos=True, eos=True),
+            'coords': pre_proccessed_coords[0],
+            'seq': self.collate_tensors(select_by_key(batch, 'seq'), bos=False, eos=True),
+            'bos_seq': self.collate_tensors(select_by_key(batch, 'seq'), bos=True, eos=True),
+            'coord_conf': pre_proccessed_coords[1],
+            'coord_pad' pre_proccessed_coords[4],
         }
         return post_proccessed
 
