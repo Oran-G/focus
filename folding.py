@@ -223,7 +223,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             'seq': self.collate_tensors(select_by_key(batch, 'seq'), bos=False, eos=True),
             'bos_seq': self.collate_tensors(select_by_key(batch, 'seq'), bos=True, eos=True),
             'coord_conf': pre_proccessed_coords[1],
-            'coord_pad' pre_proccessed_coords[4],
+            'coord_pad': pre_proccessed_coords[4],
         }
         return post_proccessed
 
