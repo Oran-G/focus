@@ -24,6 +24,7 @@ from pl_bolts.datamodules.async_dataloader import AsynchronousLoader
 import os
 import json
 import wandb
+import csv
 '''
 TODOs (10/17/21):
 * figure out reasonable train/valid set
@@ -65,15 +66,15 @@ class CSVDataset(Dataset):
         return len(self.data)
     
     def split(self, split):
-    '''
-    splits data on train/val/test
+        '''
+        splits data on train/val/test
 
-    args:
-        split: One of "train" "val" "test"
-    
-    returns:
-        subsection of data included in the train/val/test split
-    '''
+        args:
+            split: One of "train" "val" "test"
+        
+        returns:
+            subsection of data included in the train/val/test split
+        '''
         if split.lower() == 'train':
             tmp = self.df[self.df['split'] != 1]
             return tmp[tmp['split'] != 2]
@@ -104,10 +105,22 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         self.dictionary = dictionary
         self.apply_bos = apply_bos
         self.apply_eos = apply_eos
+        ''' 
+        batchConverter git line 217 - https://github.com/facebookresearch/esm/blob/main/esm/inverse_folding/util.py
+        '''
+        self.batch_converter_coords = esm.inverse_folding.util.CoordBatchConverter(self.ifalphabet)
         
     def __getitem__(self, idx):
         '''
         Get item from dataset:
+        returns:
+        {
+            'bind': torch.tensor (bind site)
+            'coords': esm.inverse_folding.util.extract_coords_from_structure(structure) output
+            'seq': torch.tensor sequence
+        } to be post-proccessed in self.collate_dicts()
+
+        
 
         '''
         structure = esm.inverse_folding.util.load_structure(f"/vast/og2114/rebase/20220519/output/{self.dataset[idx]['id']}/ranked_0.pdb", 'A')
@@ -116,49 +129,52 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         return {
             'bind':torch.tensor( self.dictionary.encode(self.dataset[idx]['bind'])),
             'coords': coords,
-            'seq': torch.tensor(self.dictionary.encode('<cath>'+seq))
-
-            '''
-            bind
-            bos_bind
-            coords
-            seq
-            coord_conf
-            coord_pad
-
-            '''
+            'seq': torch.tensor(self.dictionary.encode(seq))
 
         }
 
     def __len__(self):
         return len(self.dataset)
     def collate_tensors(self, batch: List[torch.tensor], bos=self.apply_bos, eos=self.apply_eos):
+        '''
+        utility for collating tensors together, applying eos and bos if needed, 
+        padding samples with self.dictionary.padding_idx as neccesary for length
         
-        if batch[0].ndim <= 2:
-            batch_size = len(batch)
-            max_len = max(el.size(0) for el in batch)
-            tokens = torch.empty(
-                (
-                    batch_size,
-                    max_len + int(bos) + int(eos) # eos and bos
-                ),
-                dtype=torch.int64,
-            ).fill_(self.dictionary.pad())
+        input:
+            batch: [
+                torch.tensor shape[l1],
+                torch.tensor shape[l2],  
+                ...  
+            ]
+            bos: bool, apply bos (defaults to class init settings) - !!!BOS is practically <af2>, idx 34!!!
+            eos: bool, apply eos (defaults to class init settings)
+        output:
+            torch.tensor shape[len(input), max(l1, l2, ...)+bos+eos]
+        '''
+        
+        batch_size = len(batch)
+        max_len = max(el.size(0) for el in batch)
+        tokens = torch.empty(
+            (
+                batch_size,
+                max_len + int(bos) + int(eos) # eos and bos
+            ),
+            dtype=torch.int64,
+        ).fill_(self.dictionary.padding_idx)
 
-            if bos:
-                tokens[:, 0] = self.dictionary.bos()
+        if bos:
+            tokens[:, 0] = self.dictionary.get_idx('<af2>')
 
-            for idx, el in enumerate(batch):
-                tokens[idx, int(bos):(el.size(0) + int(self.apply_bos))] = el
+        for idx, el in enumerate(batch):
+            tokens[idx, int(bos):(el.size(0) + int(bos))] = el
 
-                # import pdb; pdb.set_trace()
-                if self.apply_eos:
-                    tokens[idx, el.size(0) + int(self.apply_bos)] = self.dictionary.eos()
+            # import pdb; pdb.set_trace()
+            if eos:
+                tokens[idx, el.size(0) + int(bos)] = self.dictionary.eos_idx
+        
+        return tokens
+        
             
-            return tokens
-        else:
-            bts = esm.inverse_folding.util.CoordBatchConverter(self.ifalphabet)
-            return bts.from_lists(batch)
 
     def collater(self, batch):
         if isinstance(batch, list) and torch.is_tensor(batch[0]):
@@ -186,23 +202,30 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
             'bos_bind': torch.tensor (bos+bind site)
             'coords': torch.tensor (coords input to esm if)
             'seq': torch.tensor (protein sequence)
+            'bos_seq': torch.tensor (bos+protein sequence)
             'coord_conf': torch.tensor(confidence input to esmif encoder)
             'coord_pad' torch.tensor (padding_mask input to esm if encoder)
         }
+        !!!BOS is practiaclly '<af2>', idx 34!!!
         applying the padding correctly to capture different lengths
         '''
 
         def select_by_key(lst: List[Dict], key):
             return [el[key] for el in lst]
-        # print('collate')
-        pre_proccessed = {
-            key: self.collate_tensors(
-                select_by_key(batch, key)
-            )
-            for key in batch[0].keys()
+        
+        
+        pre_proccessed_coords = self.batch_converter_coords.from_lists(select_by_key(batch, 'coords'))
+        
+        post_proccessed = {
+            'bind': self.collate_tensors(select_by_key(batch, 'bind'), bos=False, eos=True)
+            'bos_bind': self.collate_tensors(select_by_key(batch, 'bind'), bos=True, eos=True)
+            'coords': pre_proccessed_coords[0]
+            'seq': self.collate_tensors(select_by_key(batch, 'seq'), bos=False, eos=True)
+            'bos_seq': self.collate_tensors(select_by_key(batch, 'seq'), bos=True, eos=True)
+            'coord_conf': pre_proccessed_coords[1]
+            'coord_pad' pre_proccessed_coords[4]
         }
-        post_proccessed = 
-        return 
+        return post_proccessed
 
 class InlineDictionary(Dictionary):
     @classmethod
@@ -213,186 +236,157 @@ class InlineDictionary(Dictionary):
             d.add_symbol(word, n=count, overwrite=False)
         return d
 
-def accuracy(predict:torch.tensor, label:torch.tensor, mask:torch.tensor):
-    first = (predict==label).int()
-    second = first*mask
-    return second.sum()/mask.sum()
+
 
 class RebaseT5(pl.LightningModule):
     def __init__(self, cfg):
+        '''
+        Main class
+        pl.LightningModule git - https://github.com/Lightning-AI/lightning/blob/master/src/pytorch_lightning/core/module.py
+        '''
+
         super(RebaseT5, self).__init__()
-        self.save_hyperparameters(cfg)
-        # self.save_hyperparameters()
-        print("Argument hparams: ", self.hparams)
-        # needed hparams for non-lightning pre-trained weights
-        print('batch size', self.hparams.model.batch_size)
-        self.batch_size = self.hparams.model.batch_size
-        
-
-        self.dictionary = InlineDictionary.from_list(
-            tokenization['toks']
-        )
+    
         self.cfg = cfg
+        try:
+            self.cfg['slurm'] = str(os.environ.get('SLURM_JOB_ID'))
+        except:
+            pass
+        self.save_hyperparameters(cfg)
+        self.batch_size = self.hparams.model.batch_size
+        print("Argument hparams: ", self.hparams)
+        print('batch size', self.hparams.model.batch_size)
+        
+        '''
+        model git - https://github.com/facebookresearch/esm/blob/main/esm/inverse_folding/gvp_transformer.py
+        alphabet git - https://github.com/facebookresearch/esm/blob/main/esm/data.py
+        '''
+        self.ifmodel, self.ifalphabet = esm.pretrained.esm_if1_gvp4_t16_142M_UR50()
+        
+        
+        '''
+        T5 model to be used as a possible decoder
 
-        self.perplex = torch.nn.CrossEntropyLoss(reduction='none')
-        
-        
-        # self.esm, self.esm_dictionary = torch.hub.load("facebookresearch/esm:main", self.hparams.esm.path)
-        # self.
-       
+        https://huggingface.co/docs/transformers/model_doc/t5
+        '''
         t5_config=T5Config(
-            vocab_size=len(self.dictionary),
-            decoder_start_token_id=self.ifalphabet.get_idx('<cath>'),
-            # TODO: grab these from the config
+            vocab_size=len(self.ifalphabet),
+            decoder_start_token_id=self.ifalphabet.get_idx('<af2>'),
             d_model=self.hparams.model.d_model,
             d_ff=self.hparams.model.d_ff,
             num_layers=self.hparams.model.layers,
             pad_token_id=self.ifalphabet.padding_idx,
             eos_token_id=self.ifalphabet.eos_idx,
         )
-
         self.model = T5ForConditionalGeneration(t5_config)
+
+        '''
+        loss: https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss
+        accuracy: https://torchmetrics.readthedocs.io/en/stable/classification/accuracy.html
+        '''
+
+        self.loss = nn.CrossEntropyLoss(ignore_index=self.ifalphabet.padding_idx)
         self.accuracy = torchmetrics.Accuracy(ignore_index=self.ifalphabet.padding_idx)
+        self.perplex = torch.nn.CrossEntropyLoss(reduction='none')
         
-        
-        
-        # model = model.eval()
-        # self.actual_batch_size = self.hparams.model.gpu*self.hparams.model.per_gpu if self.hparams.model.gpu != 0 else 1
-        self.test_data = []
+        '''
+        used to record validation data for logging
+        '''
+        self.val_data = []
         print('initialized')
-        #self.loss = nn.CrossEntropyLoss()
-        self.loss = nn.NLLLoss()
+        
+        
 
     def training_step(self, batch, batch_idx):
+        '''
+        Training step
+        input: 
+            batch: output of EncodedFastaDatasetWrapper.collate_dicts {
+                'bind': torch.tensor (bind site)
+                'bos_bind': torch.tensor (bos+bind site)
+                'coords': torch.tensor (coords input to esm if)
+                'seq': torch.tensor (protein sequence)
+                'bos_seq': torch.tensor (bos+protein sequence)
+                'coord_conf': torch.tensor(confidence input to esmif encoder)
+                'coord_pad' torch.tensor (padding_mask input to esm if encoder)
+            }
+
+        output:
+            loss for pl,
+            batch sizefor pl
+        '''
+        '''step lr scheduler'''
         if self.global_step  != 0:
-            #print('lr')
             self.lr_schedulers().step()
-        self.ifmodel.train()
-        label_mask = (batch['bind'] == self.ifalphabet.padding_idx)
-        batch['bind'][label_mask] = -100
-        
 
         start_time  = time.time()
-        mask = (batch['seq'] != self.ifalphabet.padding_idx).int()
 
 
-
+        '''take esm if1 encoder,feed encoder output into T5model'''
         torch.cuda.empty_cache()
+        self.ifmodel.train()
         if self.hparams.esm.esmgrad == False:
             with torch.no_grad():
-                token_representations = self.ifmodel(batch['coords'][0],
-                    confidence=batch['coords'][1], padding_mask=batch['coords'][4],
-                    prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
+                token_representations = self.ifmodel.encoder(batch['coords'], batch['coord_pad'], batch['coord_conf'])
         else:
-            token_representations = self.ifmodel(batch['coords'][0],
-                confidence=batch['coords'][1], padding_mask=batch['coords'][4],
-                prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
-        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], attention_mask=mask, labels=batch['bind'])
-        
-       
-        if True:
-            bm = ''
-            for i in range(pred[1].shape[1] - batch['bind'].shape[1] - 1):
-                bm+="<mask>"
-            bind_mask = torch.tensor(self.ifalphabet.encode(bm)).to(self.device)
-            binds = []
-            for i in range(batch['bind'].shape[0]):
-                binds.append(torch.cat((batch['bind'][i], bind_mask)))
-            bind = self.dataset.collate_tensors(binds)
-        #print(bind)
-        #print(bind.shape)
-        bind = bind.to(self.device)
-        #import pdb; pdb.set_trace()
-        #loss = self.loss(torch.nn.functional.log_softmax(torch.transpose(pred[1].to(self.device), 1, 2), dim=1), bind.to(self.device))
-        #print((bind != self.ifalphabet.mask_idx).int())
-        #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
-        #quit()
-       # gpu_usage()         
-        
+            token_representations = self.ifmodel.encoder(batch['coords'], batch['coord_pad'], batch['coord_conf'])
 
+        '''
+        take out attention mask - I do not think it is needed right now
+        labels changed so that padding idx is -100 - needed as -100 is the default ignore index for crossEntropyLoss,and is used by T5 in this case
+        pred: [
+            loss,
+            logits,
+            ...
+        ]
+        '''
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], labels=batch['bind'][batch['bind']==self.ifalphabet.padding_idx]=-100)
         
-        import pdb; pdb.set_trace()
+        
+        
         confs = self.conf(nn.functional.softmax(pred[1], dim=-1))
-        self.log('top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('mean_conf', float(confs[2]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('train_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.pad_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('length', int(pred[1].shape[-2]),  on_step=True,  logger=True)
-        self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        #import pdb; pdb.set_trace()
-        # self.log('train_acc',float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != -100).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        # self.log('train_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        
+        self.log('train_acc',float(self.accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1), batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True) #accuracy using torchmetrics accuracy
+        self.log('length', int(pred[1].shape[-2]),  on_step=True,  logger=True) # length of prediction
+        self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True) # step time
+       
         return {
             'loss': pred[0],
             'batch_size': batch['seq'].size(0)
         }
     
     def validation_step(self, batch, batch_idx):
-        #print('start of validation loop')
-        # label_mask = (batch['bind'] == self.dictionary.pad())
-        label_mask = (batch['bind'] == self.ifalphabet.padding_idx)
-        # batch['bind'][label_mask] = -100
-        #import pdb; pdb.set_trace()
+
+        
         start_time = time.time()
-        mask = (batch['seq'] != self.ifalphabet.padding_idx).int()
-        # pred = self.ifmodel.sample(batch['coords'], temprature=1)#.logits
+
         torch.cuda.empty_cache()
-        #pred = self.ifmodel(batch['coords'][0], confidence=batch['coords'][1], padding_mask=batch['coords'][4], prev_output_tokens=batch['coords'][3])[0]#.logits
-        token_representations = self.ifmodel(batch['coords'][0],
-                confidence=batch['coords'][1], padding_mask=batch['coords'][4],
-                prev_output_tokens=batch['coords'][3])[1]['inner_states'][-1]#.logits
-        #import pdb; pdb.set_trace()
-        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], attention_mask=mask, labels=batch['bind'])
-        bind = batch['bind']
-        #if pred.shape[2] > batch['bind'].shape[1]:
-        #print(pred.shape, bind.shape)
-        #print(self.device)
         
+        token_representations = self.ifmodel.encoder(batch['coords'], batch['coord_pad'], batch['coord_conf'])
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], labels=batch['bind'][batch['bind']==self.ifalphabet.padding_idx]=-100)
+
         
-        
-        if True:
-            bm = ''
-            for i in range(pred[1].shape[1] - batch['bind'].shape[1] - 1):
-                bm+="<mask>"
-            #print(pred.shape[2] - batch['bind'].shape[1])
-            #bm.append("<mask>" for _ in range(pred.shape[1] - batch['bind'].shape[1]))
-            #bind_mask = torch.tensor(self.ifalphabet.encode(["<mask>" for _ in range(pred.shape[2] - batch['bind'].shape[1])]))
-            bind_mask = torch.tensor(self.ifalphabet.encode(bm)).to(self.device)
-            binds = []
-            for i in range(batch['bind'].shape[0]):
-                binds.append(torch.cat((batch['bind'][i], bind_mask)))
-            bind = self.dataset.collate_tensors(binds)
-        #print(bind)
-        #print(bind.shape)
-        bind = bind.to(self.device)
-        #loss = self.loss(torch.nn.functional.log_softmax(torch.transpose(pred[1].to(self.device), 1, 2), dim=1), bind.to(self.device))
-        #print((bind != self.ifalphabet.mask_idx).int())
-        #print(float(accuracy(pred.argmax(-2), bind, (bind != self.ifalphabet.mask_idx).int().to(self.device))))
-        #quit()
-        # gpu_usage()
-        
-        # if True:
-        #     print('output:', output['logits'].argmax(-1)[0], 'label:', batch['bind'][0])
-        #     print(self.model.state_dict()['lm_head.weight'])
-        # bind_accuracy = batch['bind'].detach()
-        # bind_accuracy[label_mask] = self.dictionary.pad()
-        # self.log('val_acc', self.accuracy(output['logits'].argmax(-1), bind_accuracy), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        # import pdb; pdb.set_trace()
-        
+        '''
+        record validation data into val_data
+        form:  {
+            seq: protein sequence
+            bind: bind site ground truth
+            predicted: the predicted bind site
+
+        }
+
+        '''
         for i in range(batch['seq'].shape[0]):
-            
             try:
-                #import pdb; pdb.set_trace()
-                print((pred[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0])
+
                 lastidx = -1 if len((pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
-                print(lastidx)
-                #import pdb; pdb.set_trace()
-                print(pred[1].argmax(-1).tolist()[:lastidx][0])
-                self.test_data.append({'seq': self.decode(batch['seq'][i].tolist()).split("<eos>")[0],
+                self.val_data.append({
+                    'seq': self.decode(batch['seq'][i].tolist()).split("<eos>")[0],
                     'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]),
-                    'predicted': self.decode(pred[1].argmax(-1).tolist()[:lastidx][0])})
+                    'predicted': self.decode(nn.functional.softmax(pred[1], dim=-1).argmax(-1).tolist()[:lastidx][0])
+                })
             except IndexError:
                 print('Index Error')
         import pdb; pdb.set_trace()
@@ -403,8 +397,6 @@ class RebaseT5(pl.LightningModule):
         
         self.log('val_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_acc', float(accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.pad_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        # self.log('val_acc', float(accuracy(pred.argmax(-1), batch['bind'], (batch['bind'] != self.dictionary.pad()).int())), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        # self.log('val_perplex',float(self.perplexity(output['logits'], batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
             'loss': pred[0],
@@ -415,28 +407,24 @@ class RebaseT5(pl.LightningModule):
         dataset = EncodedFastaDatasetWrapper(
             CSVDataset(self.cfg.io.final, 'train'),
 
-            self.dictionary,
+            self.ifalphabet,
             apply_eos=True,
             apply_bos=False,
         )
-        # import pdb; pdb.set_trace()
+        
 
         dataloader = AsynchronousLoader(DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=1, collate_fn=dataset.collater), device=self.device)
-        # print('train loader')
-        # gpu_usage()
+        
         return dataloader
     def val_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
             CSVDataset(self.cfg.io.final, 'val'),
-            self.dictionary,
+            self.ifalphabet,
             apply_eos=True,
             apply_bos=False,
         )
-        # print('val loader')
         self.dataset = dataset        
         dataloader = AsynchronousLoader(DataLoader(dataset, batch_size=self.batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collater), device=self.device)
-        # gpu_usage()
-        # print('hi')
         return dataloader 
 
     def configure_optimizers(self):
@@ -461,86 +449,73 @@ class RebaseT5(pl.LightningModule):
                     num_warmup_steps=6000,
                 )
             }
-            # return {
-            #     "optimizer": opt,
-            #     "lr_scheduler": {
-            #         "scheduler": ReduceLROnPlateau(opt, patience=self.hparams.model.lr_patience, verbose=True),
-            #         "monitor": "train_loss_step",
-            #         'interval': 'step',
-            #         "frequency": 1
-            #         # If "monitor" references validation metrics, then "frequency" should be set to a
-            #         # multiple of "trainer.check_val_every_n_epoch".
-            #     },
-            # }
         else:
             return opt
     
    
     def decode(self, seq):
-        # input -> [list] type token representation of sequence to be decoded
-        #output -> [string] of sequence decoded 
+        '''
+        decode tokens to  string
+        input -> [list] type token representation of sequence to be decoded
+        output -> [string] of sequence decoded
+        '''
         newseq = ''
         for tok in seq:
             newseq += str(self.ifalphabet.get_tok(tok))
         return newseq
     
     def conf(self, tens, target):
+        '''
+        insight onto the top probabilities of the model. collection of data on the probabilities of each token. ex: 
+        tensor([[0.1000, 0.3000, 0.6000],
+            [0.1000, 0.5000, 0.4000],
+            [0.1500, 0.0500, 0.8000]])
+        the top would be 
+            [.6, .5, .8] this list is then multiplied by the tokenwise accuracy, if thetop token is corrrect,multiply by 1, else multipy by 0.makes probability for incorrect tokens 0
+        return top of these values, min of values, mean of values
+        '''
         h1 = []
         h2 = []
         h3 = []
         for i in range(tens.shape[0]):
-            lastidx = -1 if len((tens.argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (tens.argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
+            lastidx = -1 if len((target.argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (target.argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
+            # top probability for each token, ie the probability that the argmaxed token was chosen. multiplied by toknwise accuracy, so the probability if the topP token was correct else 0
             highs = (torch.amax(tens[i], -1)[:lastidx]* ((tens[i].argmax(-1)[:lastidx]==target[i][:lastidx]).int())).tolist()
-            h1.append(max(highs))
+            h1.append(max(highs)) # maximum of top probabilities
             h2.append(min(highs))
-            h3.append((sum(highs)/len(highs)))
+            h3.append((sum(highs)/len(highs))) # mean of top confidencs
         return max(h1), min(h2), (sum(h3)/len(h3))
 
 
-    def training_epoch_end(self, training_step_outputs):
-        #if self.trainer.current_epoch % 5 == 0:
+    def validation_epoch_end(self, validation_step_outputs):
+        '''
+            end of epoch - saves the validation data outlined in validation step to csv
+        '''
         if True:
-            #self.trainer.test(self, dataloaders=self.val_dataloader())
-            df1 = pd.DataFrame(self.test_data)
-            import csv
-            dictionaries=self.test_data
+            df1 = pd.DataFrame(self.val_data)
+            dictionaries=self.val_data
             keys = dictionaries[0].keys()
             a_file = open(f"/scratch/og2114/rebase/logs/slurm_{str(os.environ.get('SLURM_JOB_ID'))}/{self.trainer.current_epoch}-output.csv", "w")
             dict_writer = csv.DictWriter(a_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(dictionaries)
-            print('hello')
-            #tbl = wandb.Table(dataframe=df1)
-            #wandb.log({'validation_table': tbl})
+            a_file.close()
 @hydra.main(version_base="1.2.0",config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     
     model = RebaseT5(cfg)
-    # print('init')
-    # checkpoint = torch.load('/scratch/og2114/rebase/logs/Focus/21hjudcf/checkpoints/both_dff-128_dmodel-768_lr-0.001_batch-512.ckpt')
-    # print(checkpoint.keys())
-    # model = RebaseT5.load_from_checkpoint(checkpoint_path="/scratch/og2114/rebase/logs/Focus/ufa553zz/checkpoints/esm12_both_grade3_dff-128_dmodel-768_lr-0.001_batch-512.ckpt")
-    # model = RebaseT5.load_from_checkpoint(checkpoint_path='/scratch/og2114/rebase/logs/Focus/21hjudcf/checkpoints/both_dff-128_dmodel-768_lr-0.001_batch-512.ckpt')
     gpu = cfg.model.gpu
     cfg = model.hparams
     cfg.model.gpu = gpu
     wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
-    # wandb_logger.experiment.config.update(dict(cfg.model))
     checkpoint_callback = ModelCheckpoint(monitor="val_loss_epoch", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True,save_top_k=5) 
     acc_callback = ModelCheckpoint(monitor="val_acc_epoch", filename=f'acc-{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True, save_top_k=5) 
     lr_monitor = LearningRateMonitor(logging_interval='step')
     print(model.batch_size)
     print('tune: ')
-    # trainer.tune(model)
     model.batch_size = 8
-    if int(cfg.esm.layers) == 12:
-        model.batch_size = 2
-    if int(cfg.esm.layers) == 34:
-        model.batch_size = 1
-
-    #model.batch_size = 2
-    print(model.batch_size)
+    
     print(int(max(1, cfg.model.batch_size/model.batch_size)))
     trainer = pl.Trainer(
         gpus=int(cfg.model.gpu), 
@@ -574,10 +549,6 @@ def main(cfg: DictConfig) -> None:
     dict_writer.writeheader()
     dict_writer.writerows(dictionaries)
     a_file.close()
-    df1 = pd.DataFrame(dictionaries)
-    tbl = wandb.Table(dataframe=df1)
-    wandb.log({'final_table': tbl})
-    #orangeisstupid
     
 
 if __name__ == '__main__':
