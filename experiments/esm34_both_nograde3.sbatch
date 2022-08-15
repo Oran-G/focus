@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=10
-#SBATCH --time=3-12:00:00
+#SBATCH --time=6:00:00
 #SBATCH --mem=256GB
 #SBATCH --gres=gpu:4
 #SBATCH --mail-type=ALL
