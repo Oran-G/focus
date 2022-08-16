@@ -483,6 +483,8 @@ class RebaseT5(pl.LightningModule):
             lastidx = -1 if len((target.argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (target.argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
             # top probability for each token, ie the probability that the argmaxed token was chosen. multiplied by toknwise accuracy, so the probability if the topP token was correct else 0
             highs = (torch.amax(tens[i], -1)[:lastidx]* ((tens[i].argmax(-1)[:lastidx]==target[i][:lastidx]).int())).tolist()
+            if len(highs)==0:
+                highs= [0]
             h1.append(max(highs)) # maximum of top probabilities
             h2.append(min(highs))
             h3.append((sum(highs)/len(highs))) # mean of top confidencs
