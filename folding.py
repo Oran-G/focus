@@ -322,6 +322,7 @@ class RebaseT5(pl.LightningModule):
 
         '''take esm if1 encoder,feed encoder output into T5model'''
         torch.cuda.empty_cache()
+        torch.autograd.set_detect_anomaly(True)
         self.ifmodel.train()
         if self.hparams.esm.esmgrad == False:
             with torch.no_grad():
@@ -343,18 +344,18 @@ class RebaseT5(pl.LightningModule):
         label[label==self.ifalphabet.padding_idx] = -100
         pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
         batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
-        
+        loss=self.loss(pred[1], batch['bind'])
         
         confs = self.conf(nn.functional.softmax(pred[1], dim=-1),target=batch['bind'])
         self.log('top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('train_loss', float(pred[0].item()), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_loss', float(loss.item()), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('train_acc',float(self.accuracy(torch.transpose(nn.functional.softmax(pred[1],dim=-1), 1,2), batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True) #accuracy using torchmetrics accuracy
         self.log('length', int(pred[1].shape[-2]),  on_step=True,  logger=True) # length of prediction
         self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True) # step time
        
         return {
-            'loss': pred[0],
+            'loss': loss,
             'batch_size': batch['seq'].size(0)
         }
     
