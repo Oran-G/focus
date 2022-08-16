@@ -284,7 +284,7 @@ class RebaseT5(pl.LightningModule):
         '''
 
         self.loss = nn.CrossEntropyLoss(ignore_index=self.ifalphabet.padding_idx)
-        self.accuracy = torchmetrics.Accuracy(ignore_index=self.ifalphabet.padding_idx)
+        self.accuracy = torchmetrics.Accuracy(ignore_index=self.ifalphabet.padding_idx, mdmc_average='samplewise')
         self.perplex = torch.nn.CrossEntropyLoss(reduction='none')
         
         '''
@@ -342,14 +342,14 @@ class RebaseT5(pl.LightningModule):
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
         pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
-        
+        batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
         
         
         confs = self.conf(nn.functional.softmax(pred[1], dim=-1),target=batch['bind'])
         self.log('top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('train_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log('train_acc',float(self.accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1))), on_step=True, on_epoch=True, prog_bar=False, logger=True) #accuracy using torchmetrics accuracy
+        self.log('train_acc',float(self.accuracy(torch.transpose(nn.functional.softmax(pred[1],dim=-1), 1,2), batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True) #accuracy using torchmetrics accuracy
         self.log('length', int(pred[1].shape[-2]),  on_step=True,  logger=True) # length of prediction
         self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True) # step time
        
@@ -369,7 +369,7 @@ class RebaseT5(pl.LightningModule):
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
         pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
-        
+        batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
         '''
         record validation data into val_data
         form:  {
@@ -398,7 +398,7 @@ class RebaseT5(pl.LightningModule):
         self.log('val_mean_conf', float(confs[2]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         self.log('val_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(self.accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1), batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(self.accuracy(torch.transpose(nn.functional.softmax(pred[1],dim=-1), 1,2), batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
             'loss': pred[0],
