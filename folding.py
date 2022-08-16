@@ -383,7 +383,7 @@ class RebaseT5(pl.LightningModule):
         }
 
         '''
-        for i in range(batch['seq'].shape[0]):
+        for i in range(pred[1].shape[0]):
             try:
 
                 lastidx = -1 if len((pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
@@ -395,7 +395,7 @@ class RebaseT5(pl.LightningModule):
                 
             except IndexError:
                 print('Index Error')
-        # import pdb; pdb.set_trace()
+                import pdb; pdb.set_trace()
         confs = self.conf(nn.functional.softmax(pred[1], dim=-1),target=batch['bind'])
         self.log('val_top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('val_low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
