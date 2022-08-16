@@ -383,19 +383,20 @@ class RebaseT5(pl.LightningModule):
         }
 
         '''
-        for i in range(pred[1].shape[0]):
-            try:
+        ''' not working - to be fixed later'''
+        # for i in range(pred[1].shape[0]):
+        #     try:
 
-                lastidx = -1 if len((pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
-                self.val_data.append({
-                    'seq': self.decode(batch['seq'][i].tolist()).split("<eos>")[0],
-                    'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]),
-                    'predicted': self.decode(nn.functional.softmax(pred[1], dim=-1).argmax(-1).tolist()[:lastidx][0])
-                })
+        #         lastidx = -1 if len((pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
+        #         self.val_data.append({
+        #             'seq': self.decode(batch['seq'][i].tolist()).split("<eos>")[0],
+        #             'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]),
+        #             'predicted': self.decode(nn.functional.softmax(pred[1], dim=-1).argmax(-1).tolist()[:lastidx][0])
+        #         })
                 
-            except IndexError:
-                print('Index Error')
-                import pdb; pdb.set_trace()
+        #     except IndexError:
+        #         print('Index Error')
+        #         import pdb; pdb.set_trace()
         confs = self.conf(nn.functional.softmax(pred[1], dim=-1),target=batch['bind'])
         self.log('val_top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('val_low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
@@ -499,7 +500,7 @@ class RebaseT5(pl.LightningModule):
         '''
             end of epoch - saves the validation data outlined in validation step to csv
         '''
-        if True:
+        if False:
             df1 = pd.DataFrame(self.val_data)
             dictionaries=self.val_data
             print(len(dictionaries))
