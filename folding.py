@@ -345,7 +345,7 @@ class RebaseT5(pl.LightningModule):
         
         
         
-        confs = self.conf(nn.functional.softmax(pred[1], dim=-1))
+        confs = self.conf(nn.functional.softmax(pred[1], dim=-1),target=batch['bind'])
         self.log('top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('train_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
@@ -391,8 +391,8 @@ class RebaseT5(pl.LightningModule):
                 })
             except IndexError:
                 print('Index Error')
-        import pdb; pdb.set_trace()
-        confs = self.conf(nn.functional.softmax(pred[1], dim=-1))
+        # import pdb; pdb.set_trace()
+        confs = self.conf(nn.functional.softmax(pred[1], dim=-1),target=batch['bind'])
         self.log('val_top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('val_low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('val_mean_conf', float(confs[2]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
