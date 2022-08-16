@@ -531,7 +531,7 @@ def main(cfg: DictConfig) -> None:
         # check_val_every_n_epoch=1000,
         # max_epochs=cfg.model.max_epochs,
         default_root_dir=cfg.io.checkpoints,
-        accumulate_grad_batches=int(max(1, 64/model.batch_size/int(1))),
+        #accumulate_grad_batches=int(max(1, 64/model.batch_size/int(1))),
         accumulate_grad_batches=4,
         precision=cfg.model.precision,
         strategy='ddp',
