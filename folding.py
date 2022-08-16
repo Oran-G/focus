@@ -341,7 +341,7 @@ class RebaseT5(pl.LightningModule):
         
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
-        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], labels=label)
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
         
         
         
@@ -368,7 +368,7 @@ class RebaseT5(pl.LightningModule):
         token_representations = self.ifmodel.encoder(batch['coords'], batch['coord_pad'], batch['coord_conf'])
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
-        pred = self.model(encoder_outputs=[torch.transpose(token_representations, 0, 1)], labels=label)
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
         
         '''
         record validation data into val_data
