@@ -344,6 +344,7 @@ class RebaseT5(pl.LightningModule):
         label[label==self.ifalphabet.padding_idx] = -100
         pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
         batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
+        import pdb; pdb.set_trace()
         loss=self.loss(pred[1], batch['bind'])
         
         confs = self.conf(nn.functional.softmax(pred[1], dim=-1),target=batch['bind'])
@@ -505,6 +506,7 @@ class RebaseT5(pl.LightningModule):
             dict_writer.writeheader()
             dict_writer.writerows(dictionaries)
             a_file.close()
+            self.val_data = []
 @hydra.main(version_base="1.2.0",config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
