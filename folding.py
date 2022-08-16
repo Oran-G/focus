@@ -410,7 +410,7 @@ class RebaseT5(pl.LightningModule):
     
     def train_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
-            CSVDataset(self.cfg.io.final, 'train'),
+            CSVDataset(self.cfg.io.final, 'val'),
 
             self.ifalphabet,
             apply_eos=True,
