@@ -398,7 +398,7 @@ class RebaseT5(pl.LightningModule):
         self.log('val_mean_conf', float(confs[2]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         self.log('val_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('val_acc', float(accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.pad_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        self.log('val_acc', float(self.accuracy(nn.functional.softmax(pred[1],dim=-1).argmax(-1), batch['bind'], (batch['bind'] != self.ifalphabet.pad_idx).int().to(self.device))), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('val_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {
             'loss': pred[0],
