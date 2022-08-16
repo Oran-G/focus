@@ -392,6 +392,7 @@ class RebaseT5(pl.LightningModule):
                     'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]),
                     'predicted': self.decode(nn.functional.softmax(pred[1], dim=-1).argmax(-1).tolist()[:lastidx][0])
                 })
+                
             except IndexError:
                 print('Index Error')
         # import pdb; pdb.set_trace()
@@ -501,6 +502,8 @@ class RebaseT5(pl.LightningModule):
         if True:
             df1 = pd.DataFrame(self.val_data)
             dictionaries=self.val_data
+            print(len(dictionaries))
+            import pdb; pdb.set_trace()
             keys = dictionaries[0].keys()
             a_file = open(f"/scratch/og2114/rebase/logs/slurm_{str(os.environ.get('SLURM_JOB_ID'))}/{self.trainer.current_epoch}-output.csv", "w")
             dict_writer = csv.DictWriter(a_file, keys)
