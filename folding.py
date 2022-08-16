@@ -108,7 +108,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         ''' 
         batchConverter git line 217 - https://github.com/facebookresearch/esm/blob/main/esm/inverse_folding/util.py
         '''
-        self.batch_converter_coords = esm.inverse_folding.util.CoordBatchConverter(self.ifalphabet)
+        self.batch_converter_coords = esm.inverse_folding.util.CoordBatchConverter(self.dictionary)
         
     def __getitem__(self, idx):
         '''
@@ -232,14 +232,7 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         }
         return post_proccessed
 
-class InlineDictionary(Dictionary):
-    @classmethod
-    def from_list(cls, lst: List[str]):
-        d = cls()
-        for idx, word in enumerate(lst):
-            count = len(lst) - idx
-            d.add_symbol(word, n=count, overwrite=False)
-        return d
+
 
 
 
