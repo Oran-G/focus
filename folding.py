@@ -135,7 +135,8 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
 
     def __len__(self):
         return len(self.dataset)
-    def collate_tensors(self, batch: List[torch.tensor], bos=self.apply_bos, eos=self.apply_eos):
+
+    def collate_tensors(self, batch: List[torch.tensor], bos=None, eos=None):
         '''
         utility for collating tensors together, applying eos and bos if needed, 
         padding samples with self.dictionary.padding_idx as neccesary for length
@@ -151,6 +152,10 @@ class EncodedFastaDatasetWrapper(BaseWrapperDataset):
         output:
             torch.tensor shape[len(input), max(l1, l2, ...)+bos+eos]
         '''
+        if bos == None:
+            bos = self.apply_bos
+        if eos == None:
+            eos = self.apply_eos
         
         batch_size = len(batch)
         max_len = max(el.size(0) for el in batch)
