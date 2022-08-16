@@ -348,7 +348,7 @@ class RebaseT5(pl.LightningModule):
         confs = self.conf(nn.functional.softmax(pred[1], dim=-1),target=batch['bind'])
         self.log('top_conf', float(confs[0]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
         self.log('low_conf', float(confs[1]), on_step=True, on_epoch=True, prog_bar=False, logger=True)
-        self.log('train_loss', float(pred[0]), on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_loss', float(pred[0].item()), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('train_acc',float(self.accuracy(torch.transpose(nn.functional.softmax(pred[1],dim=-1), 1,2), batch['bind'])), on_step=True, on_epoch=True, prog_bar=False, logger=True) #accuracy using torchmetrics accuracy
         self.log('length', int(pred[1].shape[-2]),  on_step=True,  logger=True) # length of prediction
         self.log('train_time', time.time()- start_time, on_step=True, on_epoch=True, prog_bar=True, logger=True) # step time
