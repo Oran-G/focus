@@ -15,14 +15,14 @@ model:
   d_ff: 64
   d_model: 512
   batch_size: 512
-  lr: 0.001
-  layers: 2
+  lr: 0.0001
+  layers: 1
   lr_patience: 100
   scheduler: true
   gpu: 4
   max_epochs: -1
   name: small
-  precision: 16
+  precision: 32
 esm:
   esm: true
   esmgrad: false

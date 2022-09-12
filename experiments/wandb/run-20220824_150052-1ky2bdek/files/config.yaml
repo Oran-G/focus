@@ -1,0 +1,121 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.12.18
+    framework: huggingface
+    huggingface_version: 4.19.4
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.9.12
+    start_time: 1661367652
+    t:
+      1:
+      - 1
+      - 5
+      - 9
+      - 11
+      - 49
+      - 50
+      - 53
+      - 55
+      - 64
+      - 77
+      2:
+      - 1
+      - 5
+      - 9
+      - 11
+      - 49
+      - 50
+      - 53
+      - 55
+      - 64
+      - 77
+      4: 3.9.12
+      5: 0.12.18
+      6: 4.19.4
+      8:
+      - 6
+esm/esm:
+  desc: null
+  value: true
+esm/esmgrad:
+  desc: null
+  value: false
+esm/layers:
+  desc: null
+  value: 6
+esm/path:
+  desc: null
+  value: esm1_t6_43M_UR50S
+io/checkpoints:
+  desc: null
+  value: /scratch/og2114/rebase/models
+io/cluster:
+  desc: null
+  value: /scratch/og2114/rebase/data/cluster-fake.pcsv
+io/fasta:
+  desc: null
+  value: /scratch/og2114/rebase/data/mmseq_input.faa
+io/final:
+  desc: null
+  value: /scratch/og2114/rebase/data/filtered_data.csv
+io/finput:
+  desc: null
+  value: /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
+io/input:
+  desc: null
+  value: /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
+io/output:
+  desc: null
+  value: /scratch/og2114/rebase/data/example.csv
+io/temp:
+  desc: null
+  value: /scratch/og2114/rebase/data/filtered_data_clust.tsv
+io/test:
+  desc: null
+  value: /scratch/og2114/rebase/data/test-labeled
+io/train:
+  desc: null
+  value: /scratch/og2114/rebase/data/train-labeled
+io/val:
+  desc: null
+  value: /scratch/og2114/rebase/data/val-labeled
+io/wandb_dir:
+  desc: null
+  value: /scratch/og2114/rebase/logs
+model/batch_size:
+  desc: null
+  value: 512
+model/d_ff:
+  desc: null
+  value: 64
+model/d_model:
+  desc: null
+  value: 512
+model/gpu:
+  desc: null
+  value: 1
+model/layers:
+  desc: null
+  value: 3
+model/lr:
+  desc: null
+  value: 0.0001
+model/lr_patience:
+  desc: null
+  value: 100
+model/max_epochs:
+  desc: null
+  value: -1
+model/name:
+  desc: null
+  value: small
+model/precision:
+  desc: null
+  value: 16
+model/scheduler:
+  desc: null
+  value: true

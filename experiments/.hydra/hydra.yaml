@@ -145,11 +145,11 @@ hydra:
     task:
     - esm=esm
     - model.gpu=4
-    - model.lr=1e-3
+    - model.lr=1e-4
   job:
     name: train_ddp_process_3
     chdir: null
-    override_dirname: esm=esm,model.gpu=4,model.lr=1e-3
+    override_dirname: esm=esm,model.gpu=4,model.lr=1e-4
     id: ???
     num: ???
     config_name: defaults

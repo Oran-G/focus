@@ -1,0 +1,25 @@
+2022-08-24 22:33:08,469 INFO    MainThread:329229 [wandb_setup.py:_flush():76] Loading settings from /home/og2114/.config/wandb/settings
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_setup.py:_flush():76] Loading settings from /scratch/og2114/rebase/focus/experiments/wandb/settings
+2022-08-24 22:33:08,470 WARNING MainThread:329229 [wandb_setup.py:_flush():76] Unknown environment variable: WANDB_CACHE_DIR
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'_require_service': 'True'}
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'folding.py', 'program': '/scratch/og2114/rebase/focus/folding.py'}
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_init.py:_log_setup():428] Logging user logs to /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223308-v8b29ubi/logs/debug.log
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_init.py:_log_setup():429] Logging internal logs to /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223308-v8b29ubi/logs/debug-internal.log
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_init.py:init():462] calling init triggers
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_init.py:init():465] wandb.init called with sweep_config: {}
+config: {}
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_init.py:init():515] starting backend
+2022-08-24 22:33:08,470 INFO    MainThread:329229 [wandb_init.py:init():519] setting up manager
+2022-08-24 22:33:08,472 INFO    MainThread:329229 [backend.py:_multiprocessing_setup():97] multiprocessing start_methods=fork,spawn,forkserver, using: fork
+2022-08-24 22:33:08,473 INFO    MainThread:329229 [wandb_init.py:init():525] backend started and connected
+2022-08-24 22:33:08,477 INFO    MainThread:329229 [wandb_init.py:init():596] updated telemetry
+2022-08-24 22:33:08,546 INFO    MainThread:329229 [wandb_init.py:init():627] communicating run to backend with 30 second timeout
+2022-08-24 22:33:08,641 INFO    MainThread:329229 [wandb_run.py:_on_init():1924] communicating current version
+2022-08-24 22:33:08,669 INFO    MainThread:329229 [wandb_run.py:_on_init():1928] got version response upgrade_message: "wandb version 0.13.2 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2022-08-24 22:33:08,669 INFO    MainThread:329229 [wandb_init.py:init():662] starting run threads in backend
+2022-08-24 22:33:09,374 INFO    MainThread:329229 [wandb_run.py:_console_start():1898] atexit reg
+2022-08-24 22:33:09,375 INFO    MainThread:329229 [wandb_run.py:_redirect():1771] redirect: SettingsConsole.WRAP
+2022-08-24 22:33:09,376 INFO    MainThread:329229 [wandb_run.py:_redirect():1808] Wrapping output streams.
+2022-08-24 22:33:09,376 INFO    MainThread:329229 [wandb_run.py:_redirect():1832] Redirects installed.
+2022-08-24 22:33:09,376 INFO    MainThread:329229 [wandb_init.py:init():688] run started, returning control to user process

@@ -1,0 +1,10 @@
+512
+tune:
+64
+[2022-08-24 22:33:06,506][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 2
+Initializing distributed: GLOBAL_RANK: 2, MEMBER: 3/4
+[2022-08-24 22:33:09,393][torch.distributed.distributed_c10d][INFO] - Rank 2: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+LOCAL_RANK: 2 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+pre filter 22737
+post filter 20985
+pre filter 22737

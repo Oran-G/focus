@@ -62,3 +62,34 @@
 [2022-08-10 16:21:20,044][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-23451284/tmpx0djabqx/_remote_module_non_sriptable.py
 [2022-08-10 16:21:27,335][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
 [2022-08-10 16:21:27,572][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+[2022-08-24 22:32:55,376][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24084661/tmp6r1oxnew
+[2022-08-24 22:32:55,412][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24084661/tmp6r1oxnew/_remote_module_non_sriptable.py
+[2022-08-24 22:33:05,076][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+[2022-08-24 22:33:09,393][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+[2022-08-26 17:10:52,224][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24154262/tmptfurxjap
+[2022-08-26 17:10:52,233][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24154262/tmptfurxjap/_remote_module_non_sriptable.py
+[2022-08-26 17:11:47,578][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+[2022-08-26 17:11:47,589][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 2 nodes.
+[2022-08-26 17:57:07,164][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24155401/tmpx195h1gm
+[2022-08-26 17:57:07,179][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24155401/tmpx195h1gm/_remote_module_non_sriptable.py
+[2022-08-26 17:58:00,963][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+[2022-08-26 17:58:00,974][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 2 nodes.
+[2022-08-26 18:19:52,872][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24156796/tmp5i9vbwi1
+[2022-08-26 18:19:52,888][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24156796/tmp5i9vbwi1/_remote_module_non_sriptable.py
+[2022-08-26 18:19:56,288][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+[2022-08-26 18:19:56,308][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 2 nodes.
+[2022-09-05 12:46:15,985][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24480656/tmpwi1ev79l
+[2022-09-05 12:46:16,009][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24480656/tmpwi1ev79l/_remote_module_non_sriptable.py
+[2022-09-05 12:46:20,874][wandb][INFO] - Watching
+[2022-09-11 10:52:22,231][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24732843/tmpgpfiku63
+[2022-09-11 10:52:22,251][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24732843/tmpgpfiku63/_remote_module_non_sriptable.py
+[2022-09-11 10:52:23,324][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24732844/tmpcac8_los
+[2022-09-11 10:52:23,329][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24732844/tmpcac8_los/_remote_module_non_sriptable.py
+[2022-09-11 10:52:28,435][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+[2022-09-11 10:52:29,856][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+[2022-09-11 10:52:32,511][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+[2022-09-11 10:52:33,296][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+[2022-09-12 06:27:43,534][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24756283/tmp3atl015s
+[2022-09-12 06:27:43,557][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24756283/tmp3atl015s/_remote_module_non_sriptable.py
+[2022-09-12 06:27:48,583][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+[2022-09-12 06:27:49,529][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from transformers import T5Config, T5ForConditionalGeneration, get_linear_schedule_with_warmup
+from transformers import T5Config, T5ForConditionalGeneration, get_linear_schedule_with_warmup,  get_polynomial_decay_schedule_with_warmup
 from fairseq.data import FastaDataset, EncodedFastaDataset, Dictionary, BaseWrapperDataset
 from constants import tokenization, neucleotides
 from torch.utils.data import DataLoader, Dataset
@@ -342,7 +342,11 @@ class RebaseT5(pl.LightningModule):
         
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
-        pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
+        
+        try:
+            pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
+        except RuntimeError:
+            print(token_representations['encoder_out'], batch, batch_idx)
         batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
         #import pdb; pdb.set_trace()
         loss=self.loss(torch.transpose(pred[1],1, 2), batch['bind'])
@@ -370,7 +374,10 @@ class RebaseT5(pl.LightningModule):
         token_representations = self.ifmodel.encoder(batch['coords'], batch['coord_pad'], batch['coord_conf'])
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
-        pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
+        try:
+            pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
+        except RuntimeError:
+            print(token_representations['encoder_out'], batch, batch_idx)
         batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
         loss=self.loss(torch.transpose(pred[1],1, 2), batch['bind'])
         '''
@@ -412,7 +419,7 @@ class RebaseT5(pl.LightningModule):
     
     def train_dataloader(self):
         dataset = EncodedFastaDatasetWrapper(
-            CSVDataset(self.cfg.io.final, 'val'),
+            CSVDataset(self.cfg.io.final, 'train'),
 
             self.ifalphabet,
             apply_eos=True,
@@ -436,9 +443,8 @@ class RebaseT5(pl.LightningModule):
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW([
-                {'params': self.ifmodel.parameters()},  
-                {'params': self.model.parameters()}
-                ], 
+                {'params': self.ifmodel.parameters(), 'lr': float(self.hparams.model.lr)/5},  
+                {'params': self.model.parameters()}], 
             lr=float(self.hparams.model.lr))
         # return opt
 
@@ -450,10 +456,11 @@ class RebaseT5(pl.LightningModule):
         if self.hparams.model.scheduler:
             return {
                 'optimizer': opt,
-                'lr_scheduler': get_linear_schedule_with_warmup(
+                'lr_scheduler': get_polynomial_decay_schedule_with_warmup(
                     optimizer=opt,
-                    num_training_steps=400000,
-                    num_warmup_steps=6000,
+                    num_training_steps=300000,
+                    num_warmup_steps=4000, #was 4000
+                    power=2,
                 )
             }
         else:
@@ -512,30 +519,80 @@ class RebaseT5(pl.LightningModule):
             dict_writer.writerows(dictionaries)
             a_file.close()
             self.val_data = []
+    def test_step(self, batch, batch_idx):
+
+        
+        start_time = time.time()
+
+        torch.cuda.empty_cache()
+        
+        token_representations = self.ifmodel.encoder(batch['coords'], batch['coord_pad'], batch['coord_conf'])
+        label = batch['bind']
+        label[label==self.ifalphabet.padding_idx] = -100
+        pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
+        batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
+        loss=self.loss(torch.transpose(pred[1],1, 2), batch['bind'])
+        '''
+        record validation data into val_data
+        form:  {
+            seq: protein sequence
+            bind: bind site ground truth
+            predicted: the predicted bind site
+        }
+        '''
+        ''' not working - to be fixed later'''
+        for i in range(pred[1].shape[0]):
+            try:
+
+                lastidx = -1 if len((pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0]) == 0 else (pred[1].argmax(-1)[i]  == self.ifalphabet.eos_idx).nonzero(as_tuple=True)[0].tolist()[0]
+                self.val_data.append({
+                    'seq': self.decode(batch['seq'][i].tolist()).split("<eos>")[0],
+                    'bind': self.decode(batch['bind'][i].tolist()[:batch['bind'][i].tolist().index(2)]),
+                    'predicted': self.decode(nn.functional.softmax(pred[1], dim=-1).argmax(-1).tolist()[:lastidx][0])
+                })
+                
+            except IndexError:
+                print('Index Error')
+                import pdb; pdb.set_trace()
+
+
+
+
+
 @hydra.main(version_base="1.2.0",config_path='configs', config_name='defaults')
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     
     model = RebaseT5(cfg)
+    #model = RebaseT5.load_from_checkpoint(checkpoint_path='/scratch/og2114/rebase/logs/Focus/3j3hxn14/checkpoints/acc-small_dff-64_dmodel-512_lr-0.0001_batch-512-v4.ckpt')
     gpu = cfg.model.gpu
     cfg = model.hparams
     cfg.model.gpu = gpu
+    
+    
     wandb_logger = WandbLogger(project="Focus",save_dir=cfg.io.wandb_dir)
+    wandb_logger.watch(model)
     checkpoint_callback = ModelCheckpoint(monitor="val_loss_epoch", filename=f'{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True,save_top_k=5) 
     acc_callback = ModelCheckpoint(monitor="val_acc_epoch", filename=f'acc-{cfg.model.name}_dff-{cfg.model.d_ff}_dmodel-{cfg.model.d_model}_lr-{cfg.model.lr}_batch-{cfg.model.batch_size}', verbose=True, save_top_k=5) 
+    swa_callback = pl.callbacks.StochasticWeightAveraging(swa_lrs=1e-2)
     lr_monitor = LearningRateMonitor(logging_interval='step')
     print(model.batch_size)
     print('tune: ')
-    model.batch_size = 8
+    model.batch_size = 2
     
     print(int(max(1, cfg.model.batch_size/model.batch_size)))
     trainer = pl.Trainer(
-        gpus=int(cfg.model.gpu), 
+        gpus=-1, 
         logger=wandb_logger,
         # limit_train_batches=2,
         # limit_train_epochs=3
         # auto_scale_batch_size=True,
-        callbacks=[checkpoint_callback, lr_monitor, acc_callback],
+        callbacks=[
+            checkpoint_callback, 
+            lr_monitor, 
+            acc_callback, 
+            #swa_callback,
+            ],
         # check_val_every_n_epoch=1000,
         # max_epochs=cfg.model.max_epochs,
         default_root_dir=cfg.io.checkpoints,
@@ -547,16 +604,19 @@ def main(cfg: DictConfig) -> None:
         log_every_n_steps=5,
         progress_bar_refresh_rate=100,
         max_epochs=92,
-        #limit_train_batches=5,
+        #limit_train_batches=.1,
         auto_scale_batch_size="power",
-        gradient_clip_val=0.5,
+        gradient_clip_val=0.3,
+
         )
+    
     trainer.fit(model)
+    model = model.to(torch.device("cuda:0"))
     trainer.test(model, dataloaders=model.val_dataloader())
     import csv
-    dictionaries=model.test_data
+    dictionaries=model.val_data
     keys = dictionaries[0].keys()
-    a_file = open("output.csv", "w")
+    a_file = open("/scratch/og2114/rebase/logs/Focus/final.csv", "w")
     dict_writer = csv.DictWriter(a_file, keys)
     dict_writer.writeheader()
     dict_writer.writerows(dictionaries)

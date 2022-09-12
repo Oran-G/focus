@@ -1,0 +1,11 @@
+
+Initializing distributed: GLOBAL_RANK: 1, MEMBER: 2/4
+512
+tune:
+64
+[2022-08-24 22:33:05,076][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+[2022-08-24 22:33:09,393][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+LOCAL_RANK: 1 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+pre filter 22737
+post filter 20985
+pre filter 22737

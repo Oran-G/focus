@@ -1,0 +1,34 @@
+{
+    "os": "Linux-4.18.0-305.28.1.el8_4.x86_64-x86_64-with-glibc2.31",
+    "python": "3.9.12",
+    "heartbeatAt": "2022-08-25T02:33:08.722676",
+    "startedAt": "2022-08-25T02:33:08.465816",
+    "docker": null,
+    "gpu": "Tesla V100-PCIE-32GB",
+    "gpu_count": 4,
+    "cpu_count": 48,
+    "cuda": null,
+    "args": [
+        "esm=grad",
+        "model.gpu=4",
+        "model.lr=5e-5",
+        "hydra.run.dir=\"/scratch/og2114/rebase/focus/experiments\"",
+        "hydra.job.name=train_ddp_process_1",
+        "hydra.run.dir=\"/scratch/og2114/rebase/focus/experiments\"",
+        "hydra.job.name=train_ddp_process_2",
+        "hydra.run.dir=\"/scratch/og2114/rebase/focus/experiments\"",
+        "hydra.job.name=train_ddp_process_3"
+    ],
+    "state": "running",
+    "program": "/scratch/og2114/rebase/focus/folding.py",
+    "codePath": "folding.py",
+    "git": {
+        "remote": "https://github.com/Oran-G/focus.git",
+        "commit": "3b3a551ba6e52cc2d657c1a18db89c386aae4b70"
+    },
+    "email": null,
+    "root": "/scratch/og2114/rebase/focus",
+    "host": "gv010.hpc.nyu.edu",
+    "username": "og2114",
+    "executable": "/ext3/miniconda3/bin/python3"
+}

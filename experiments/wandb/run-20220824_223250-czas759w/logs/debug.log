@@ -1,0 +1,58 @@
+2022-08-24 22:32:50,737 INFO    MainThread:329023 [wandb_setup.py:_flush():76] Loading settings from /home/og2114/.config/wandb/settings
+2022-08-24 22:32:50,737 INFO    MainThread:329023 [wandb_setup.py:_flush():76] Loading settings from /scratch/og2114/rebase/focus/experiments/wandb/settings
+2022-08-24 22:32:50,737 WARNING MainThread:329023 [wandb_setup.py:_flush():76] Unknown environment variable: WANDB_CACHE_DIR
+2022-08-24 22:32:50,737 INFO    MainThread:329023 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2022-08-24 22:32:50,737 INFO    MainThread:329023 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'folding.py', 'program': '/scratch/og2114/rebase/focus/folding.py'}
+2022-08-24 22:32:50,737 INFO    MainThread:329023 [wandb_init.py:_log_setup():428] Logging user logs to /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/logs/debug.log
+2022-08-24 22:32:50,737 INFO    MainThread:329023 [wandb_init.py:_log_setup():429] Logging internal logs to /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/logs/debug-internal.log
+2022-08-24 22:32:50,738 INFO    MainThread:329023 [wandb_init.py:init():462] calling init triggers
+2022-08-24 22:32:50,738 INFO    MainThread:329023 [wandb_init.py:init():465] wandb.init called with sweep_config: {}
+config: {}
+2022-08-24 22:32:50,738 INFO    MainThread:329023 [wandb_init.py:init():515] starting backend
+2022-08-24 22:32:50,738 INFO    MainThread:329023 [backend.py:_multiprocessing_setup():97] multiprocessing start_methods=fork,spawn,forkserver, using: fork
+2022-08-24 22:32:50,739 INFO    MainThread:329023 [backend.py:ensure_launched():217] starting backend process...
+2022-08-24 22:32:50,806 INFO    MainThread:329023 [backend.py:ensure_launched():222] started backend process with pid: 329115
+2022-08-24 22:32:50,807 INFO    MainThread:329023 [wandb_init.py:init():525] backend started and connected
+2022-08-24 22:32:50,810 INFO    MainThread:329115 [internal.py:wandb_internal():90] W&B internal server running at pid: 329115, started at: 2022-08-24 22:32:50.807823
+2022-08-24 22:32:50,815 INFO    MainThread:329023 [wandb_init.py:init():596] updated telemetry
+2022-08-24 22:32:50,816 INFO    WriterThread:329115 [datastore.py:open_for_write():75] open: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/run-czas759w.wandb
+2022-08-24 22:32:50,905 INFO    MainThread:329023 [wandb_init.py:init():627] communicating run to backend with 30 second timeout
+2022-08-24 22:32:51,052 INFO    MainThread:329023 [wandb_run.py:_on_init():1924] communicating current version
+2022-08-24 22:32:51,059 INFO    SenderThread:329115 [dir_watcher.py:__init__():205] watching files in: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files
+2022-08-24 22:32:51,060 INFO    SenderThread:329115 [sender.py:_start_run_threads():812] run started: czas759w with start time 1661394770
+2022-08-24 22:32:51,060 INFO    SenderThread:329115 [sender.py:_save_file():949] saving file wandb-summary.json with policy end
+2022-08-24 22:32:51,084 INFO    MainThread:329023 [wandb_run.py:_on_init():1928] got version response upgrade_message: "wandb version 0.13.2 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2022-08-24 22:32:51,084 INFO    MainThread:329023 [wandb_init.py:init():662] starting run threads in backend
+2022-08-24 22:32:51,996 INFO    SenderThread:329115 [sender.py:_save_file():949] saving file wandb-metadata.json with policy now
+2022-08-24 22:32:52,000 INFO    MainThread:329023 [wandb_run.py:_console_start():1898] atexit reg
+2022-08-24 22:32:52,000 INFO    MainThread:329023 [wandb_run.py:_redirect():1771] redirect: SettingsConsole.REDIRECT
+2022-08-24 22:32:52,001 INFO    MainThread:329023 [wandb_run.py:_redirect():1776] Redirecting console.
+2022-08-24 22:32:52,006 INFO    MainThread:329023 [wandb_run.py:_redirect():1832] Redirects installed.
+2022-08-24 22:32:52,006 INFO    MainThread:329023 [wandb_init.py:init():688] run started, returning control to user process
+2022-08-24 22:32:52,061 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_created():256] file/dir created: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/conda-environment.yaml
+2022-08-24 22:32:52,061 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_created():256] file/dir created: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:32:52,061 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_created():256] file/dir created: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/wandb-metadata.json
+2022-08-24 22:32:52,062 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_created():256] file/dir created: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/requirements.txt
+2022-08-24 22:32:52,063 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_created():256] file/dir created: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/wandb-summary.json
+2022-08-24 22:32:52,342 INFO    Thread-12 :329115 [upload_job.py:push():132] Uploaded file /state/partition1/job-24084661/tmposty9y4wwandb/271nod1d-wandb-metadata.json
+2022-08-24 22:32:54,061 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:32:56,061 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:33:00,062 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:33:02,063 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:33:04,066 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:33:10,066 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:33:12,066 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:33:22,083 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/config.yaml
+2022-08-24 22:33:26,600 INFO    MainThread:329023 [wandb_run.py:_config_callback():1136] config_cb None None {'io/input': '/scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta', 'io/output': '/scratch/og2114/rebase/data/example.csv', 'io/fasta': '/scratch/og2114/rebase/data/mmseq_input.faa', 'io/cluster': '/scratch/og2114/rebase/data/cluster-fake.pcsv', 'io/train': '/scratch/og2114/rebase/data/train-labeled', 'io/val': '/scratch/og2114/rebase/data/val-labeled', 'io/test': '/scratch/og2114/rebase/data/test-labeled', 'io/finput': '/scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta', 'io/final': '/scratch/og2114/rebase/data/filtered_data.csv', 'io/temp': '/scratch/og2114/rebase/data/filtered_data_clust.tsv', 'io/checkpoints': '/scratch/og2114/rebase/models', 'io/wandb_dir': '/scratch/og2114/rebase/logs', 'model/d_ff': 64, 'model/d_model': 512, 'model/batch_size': 512, 'model/lr': 5e-05, 'model/layers': 3, 'model/lr_patience': 100, 'model/scheduler': True, 'model/gpu': 4, 'model/max_epochs': -1, 'model/name': 'small', 'model/precision': 16, 'esm/esm': True, 'esm/esmgrad': True, 'esm/path': 'esm1_t6_43M_UR50S', 'esm/layers': 6}
+2022-08-24 22:33:28,091 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:33:53,100 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/config.yaml
+2022-08-24 22:37:12,147 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:37:14,148 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:37:16,148 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:37:18,149 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:37:20,150 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:37:22,150 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:37:54,158 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:37:56,158 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log
+2022-08-24 22:37:58,159 INFO    Thread-8  :329115 [dir_watcher.py:_on_file_modified():269] file/dir modified: /scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223250-czas759w/files/output.log

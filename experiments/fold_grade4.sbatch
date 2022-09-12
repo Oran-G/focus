@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=10
-#SBATCH --time=24:00:00
+#SBATCH --time=47:00:00
 #SBATCH --mem=120GB
 #SBATCH --gres=gpu:4
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=og2114@nyu.edu
 #SBATCH --output=/scratch/og2114/rebase/logs/slurm_%j.out
 #SBATCH --ntasks-per-node=1
-#SBATCH --job-name='esm inverse folding model e-4 grad T5'
+#SBATCH --job-name='grad esm inverse folding model e-4 grad T5'
 #SBATCH --signal=SIGUSR1@90
 module purge
 mkdir -p /scratch/og2114/rebase/logs/slurm_$SLURM_JOB_ID

@@ -1,0 +1,1111 @@
+/ext3/miniconda3/lib/python3.9/site-packages/pytorch_lightning/loggers/wandb.py:347: UserWarning: There is a wandb run already in progress and newly created instances of `WandbLogger` will reuse this run. If this is not desired, call `wandb.finish()` before instantiating `WandbLogger`.
+  rank_zero_warn(
+Using 16bit native Automatic Mixed Precision (AMP)
+/ext3/miniconda3/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/callback_connector.py:96: LightningDeprecationWarning: Setting `Trainer(progress_bar_refresh_rate=100)` is deprecated in v1.5 and will be removed in v1.7. Please pass `pytorch_lightning.callbacks.progress.TQDMProgressBar` with `refresh_rate` directly to the Trainer's `callbacks` argument instead. Or, to disable the progress bar pass `enable_progress_bar = False` to the Trainer.
+  rank_zero_deprecation(
+GPU available: True, used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+io:
+  input: /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
+  output: /scratch/og2114/rebase/data/example.csv
+  fasta: /scratch/og2114/rebase/data/mmseq_input.faa
+  cluster: /scratch/og2114/rebase/data/cluster-fake.pcsv
+  train: /scratch/og2114/rebase/data/train-labeled
+  val: /scratch/og2114/rebase/data/val-labeled
+  test: /scratch/og2114/rebase/data/test-labeled
+  finput: /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
+  final: /scratch/og2114/rebase/data/filtered_data.csv
+  temp: /scratch/og2114/rebase/data/filtered_data_clust.tsv
+  checkpoints: /scratch/og2114/rebase/models
+  wandb_dir: /scratch/og2114/rebase/logs
+model:
+  d_ff: 64
+  d_model: 512
+  batch_size: 512
+  lr: 5.0e-05
+  layers: 3
+  lr_patience: 100
+  scheduler: true
+  gpu: 4
+  max_epochs: -1
+  name: small
+  precision: 16
+esm:
+  esm: true
+  esmgrad: true
+  path: esm1_t6_43M_UR50S
+  layers: 6
+[2022-08-24 22:32:55,376][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24084661/tmp6r1oxnew
+[2022-08-24 22:32:55,412][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24084661/tmp6r1oxnew/_remote_module_non_sriptable.py
+Argument hparams:  {'io': {'input': '/scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta', 'output': '/scratch/og2114/rebase/data/example.csv', 'fasta': '/scratch/og2114/rebase/data/mmseq_input.faa', 'cluster': '/scratch/og2114/rebase/data/cluster-fake.pcsv', 'train': '/scratch/og2114/rebase/data/train-labeled', 'val': '/scratch/og2114/rebase/data/val-labeled', 'test': '/scratch/og2114/rebase/data/test-labeled', 'finput': '/scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta', 'final': '/scratch/og2114/rebase/data/filtered_data.csv', 'temp': '/scratch/og2114/rebase/data/filtered_data_clust.tsv', 'checkpoints': '/scratch/og2114/rebase/models', 'wandb_dir': '/scratch/og2114/rebase/logs'}, 'model': {'d_ff': 64, 'd_model': 512, 'batch_size': 512, 'lr': 5e-05, 'layers': 3, 'lr_patience': 100, 'scheduler': True, 'gpu': 4, 'max_epochs': -1, 'name': 'small', 'precision': 16}, 'esm': {'esm': True, 'esmgrad': True, 'path': 'esm1_t6_43M_UR50S', 'layers': 6}}
+batch size 512
+2022-08-24 22:32:53 | INFO | numexpr.utils | Note: NumExpr detected 48 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+2022-08-24 22:32:53 | INFO | numexpr.utils | NumExpr defaulting to 8 threads.
+initialized
+/ext3/miniconda3/lib/python3.9/site-packages/fair_esm-0.4.2-py3.9.egg/esm/pretrained.py:174: UserWarning: Regression weights not found, predicting contacts will not produce correct results.
+2022-08-24 22:32:58 | INFO | numexpr.utils | Note: NumExpr detected 48 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+2022-08-24 22:32:58 | INFO | numexpr.utils | NumExpr defaulting to 8 threads.
+[34m[1mwandb[39m[22m: Currently logged in as: [33moransgoodman[39m. Use [1m`wandb login --relogin`[22m to force relogin
+[34m[1mwandb[39m[22m: wandb version 0.13.2 is available!  To upgrade, please run:
+[34m[1mwandb[39m[22m:  $ pip install wandb --upgrade
+[34m[1mwandb[39m[22m: Tracking run with wandb version 0.12.18
+[34m[1mwandb[39m[22m: Run data is saved locally in [35m[1m/scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223300-v28ooggn
+[34m[1mwandb[39m[22m: Run [1m`wandb offline`[22m to turn off syncing.
+[34m[1mwandb[39m[22m: Syncing run [33mdevoted-gorge-606
+[34m[1mwandb[39m[22m: ⭐️ View project at [34m[4mhttps://wandb.ai/oransgoodman/Focus
+[34m[1mwandb[39m[22m: 🚀 View run at [34m[4mhttps://wandb.ai/oransgoodman/Focus/runs/v28ooggn
+Initializing distributed: GLOBAL_RANK: 1, MEMBER: 2/4
+io:
+  input: /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
+  output: /scratch/og2114/rebase/data/example.csv
+  fasta: /scratch/og2114/rebase/data/mmseq_input.faa
+  cluster: /scratch/og2114/rebase/data/cluster-fake.pcsv
+  train: /scratch/og2114/rebase/data/train-labeled
+  val: /scratch/og2114/rebase/data/val-labeled
+  test: /scratch/og2114/rebase/data/test-labeled
+  finput: /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
+  final: /scratch/og2114/rebase/data/filtered_data.csv
+  temp: /scratch/og2114/rebase/data/filtered_data_clust.tsv
+  checkpoints: /scratch/og2114/rebase/models
+  wandb_dir: /scratch/og2114/rebase/logs
+model:
+  d_ff: 64
+  d_model: 512
+  batch_size: 512
+  lr: 5.0e-05
+  layers: 3
+  lr_patience: 100
+  scheduler: true
+  gpu: 4
+  max_epochs: -1
+  name: small
+  precision: 16
+esm:
+  esm: true
+  esmgrad: true
+  path: esm1_t6_43M_UR50S
+  layers: 6
+[2022-08-24 22:33:00,313][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24084661/tmp9u1iaepx
+[2022-08-24 22:33:00,326][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24084661/tmp9u1iaepx/_remote_module_non_sriptable.py
+Argument hparams:  {'io': {'input': '/scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta', 'output': '/scratch/og2114/rebase/data/example.csv', 'fasta': '/scratch/og2114/rebase/data/mmseq_input.faa', 'cluster': '/scratch/og2114/rebase/data/cluster-fake.pcsv', 'train': '/scratch/og2114/rebase/data/train-labeled', 'val': '/scratch/og2114/rebase/data/val-labeled', 'test': '/scratch/og2114/rebase/data/test-labeled', 'finput': '/scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta', 'final': '/scratch/og2114/rebase/data/filtered_data.csv', 'temp': '/scratch/og2114/rebase/data/filtered_data_clust.tsv', 'checkpoints': '/scratch/og2114/rebase/models', 'wandb_dir': '/scratch/og2114/rebase/logs'}, 'model': {'d_ff': 64, 'd_model': 512, 'batch_size': 512, 'lr': 5e-05, 'layers': 3, 'lr_patience': 100, 'scheduler': True, 'gpu': 4, 'max_epochs': -1, 'name': 'small', 'precision': 16}, 'esm': {'esm': True, 'esmgrad': True, 'path': 'esm1_t6_43M_UR50S', 'layers': 6}}
+batch size 512
+512
+tune:
+64
+2022-08-24 22:33:02 | INFO | numexpr.utils | Note: NumExpr detected 48 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+2022-08-24 22:33:02 | INFO | numexpr.utils | NumExpr defaulting to 8 threads.
+/ext3/miniconda3/lib/python3.9/site-packages/fair_esm-0.4.2-py3.9.egg/esm/pretrained.py:174: UserWarning: Regression weights not found, predicting contacts will not produce correct results.
+io:
+  input: /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
+  output: /scratch/og2114/rebase/data/example.csv
+  fasta: /scratch/og2114/rebase/data/mmseq_input.faa
+  cluster: /scratch/og2114/rebase/data/cluster-fake.pcsv
+  train: /scratch/og2114/rebase/data/train-labeled
+  val: /scratch/og2114/rebase/data/val-labeled
+  test: /scratch/og2114/rebase/data/test-labeled
+  finput: /scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta
+  final: /scratch/og2114/rebase/data/filtered_data.csv
+  temp: /scratch/og2114/rebase/data/filtered_data_clust.tsv
+  checkpoints: /scratch/og2114/rebase/models
+  wandb_dir: /scratch/og2114/rebase/logs
+model:
+  d_ff: 64
+  d_model: 512
+  batch_size: 512
+  lr: 5.0e-05
+  layers: 3
+  lr_patience: 100
+  scheduler: true
+  gpu: 4
+  max_epochs: -1
+  name: small
+  precision: 16
+esm:
+  esm: true
+  esmgrad: true
+  path: esm1_t6_43M_UR50S
+  layers: 6
+[2022-08-24 22:33:04,137][torch.distributed.nn.jit.instantiator][INFO] - Created a temporary directory at /state/partition1/job-24084661/tmptb8ksxza
+[2022-08-24 22:33:04,164][torch.distributed.nn.jit.instantiator][INFO] - Writing /state/partition1/job-24084661/tmptb8ksxza/_remote_module_non_sriptable.py
+Argument hparams:  {'io': {'input': '/scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta', 'output': '/scratch/og2114/rebase/data/example.csv', 'fasta': '/scratch/og2114/rebase/data/mmseq_input.faa', 'cluster': '/scratch/og2114/rebase/data/cluster-fake.pcsv', 'train': '/scratch/og2114/rebase/data/train-labeled', 'val': '/scratch/og2114/rebase/data/val-labeled', 'test': '/scratch/og2114/rebase/data/test-labeled', 'finput': '/scratch/og2114/rebase/data/All_Type_II_restriction_enzyme_genes_Protein.fasta', 'final': '/scratch/og2114/rebase/data/filtered_data.csv', 'temp': '/scratch/og2114/rebase/data/filtered_data_clust.tsv', 'checkpoints': '/scratch/og2114/rebase/models', 'wandb_dir': '/scratch/og2114/rebase/logs'}, 'model': {'d_ff': 64, 'd_model': 512, 'batch_size': 512, 'lr': 5e-05, 'layers': 3, 'lr_patience': 100, 'scheduler': True, 'gpu': 4, 'max_epochs': -1, 'name': 'small', 'precision': 16}, 'esm': {'esm': True, 'esmgrad': True, 'path': 'esm1_t6_43M_UR50S', 'layers': 6}}
+batch size 512
+initialized
+[2022-08-24 22:33:05,076][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 1
+512
+tune:
+64
+[2022-08-24 22:33:06,506][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 2
+initialized
+512
+tune:
+64
+[2022-08-24 22:33:09,384][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 3
+512
+tune:
+64
+[2022-08-24 22:33:09,390][torch.distributed.distributed_c10d][INFO] - Added key: store_based_barrier_key:1 to store for rank: 0
+[2022-08-24 22:33:09,390][torch.distributed.distributed_c10d][INFO] - Rank 0: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+[2022-08-24 22:33:09,393][torch.distributed.distributed_c10d][INFO] - Rank 1: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+[2022-08-24 22:33:09,393][torch.distributed.distributed_c10d][INFO] - Rank 2: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+[2022-08-24 22:33:09,394][torch.distributed.distributed_c10d][INFO] - Rank 3: Completed store-based barrier for key:store_based_barrier_key:1 with 4 nodes.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/4
+[34m[1mwandb[39m[22m: Currently logged in as: [33moransgoodman[39m. Use [1m`wandb login --relogin`[22m to force relogin
+[34m[1mwandb[39m[22m: wandb version 0.13.2 is available!  To upgrade, please run:
+[34m[1mwandb[39m[22m:  $ pip install wandb --upgrade
+[34m[1mwandb[39m[22m: Tracking run with wandb version 0.12.18
+[34m[1mwandb[39m[22m: Run data is saved locally in [35m[1m/scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223305-3s7l5r55
+[34m[1mwandb[39m[22m: Run [1m`wandb offline`[22m to turn off syncing.
+[34m[1mwandb[39m[22m: Syncing run [33mneat-water-607
+[34m[1mwandb[39m[22m: ⭐️ View project at [34m[4mhttps://wandb.ai/oransgoodman/Focus
+[34m[1mwandb[39m[22m: 🚀 View run at [34m[4mhttps://wandb.ai/oransgoodman/Focus/runs/3s7l5r55
+Initializing distributed: GLOBAL_RANK: 2, MEMBER: 3/4
+/ext3/miniconda3/lib/python3.9/site-packages/fair_esm-0.4.2-py3.9.egg/esm/pretrained.py:174: UserWarning: Regression weights not found, predicting contacts will not produce correct results.
+[34m[1mwandb[39m[22m: Currently logged in as: [33moransgoodman[39m. Use [1m`wandb login --relogin`[22m to force relogin
+[34m[1mwandb[39m[22m: wandb version 0.13.2 is available!  To upgrade, please run:
+[34m[1mwandb[39m[22m:  $ pip install wandb --upgrade
+[34m[1mwandb[39m[22m: Tracking run with wandb version 0.12.18
+[34m[1mwandb[39m[22m: Run data is saved locally in [35m[1m/scratch/og2114/rebase/focus/experiments/wandb/run-20220824_223308-v8b29ubi
+[34m[1mwandb[39m[22m: Run [1m`wandb offline`[22m to turn off syncing.
+[34m[1mwandb[39m[22m: Syncing run [33mdriven-terrain-608
+[34m[1mwandb[39m[22m: ⭐️ View project at [34m[4mhttps://wandb.ai/oransgoodman/Focus
+[34m[1mwandb[39m[22m: 🚀 View run at [34m[4mhttps://wandb.ai/oransgoodman/Focus/runs/v8b29ubi
+Initializing distributed: GLOBAL_RANK: 3, MEMBER: 4/4
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 4 processes
+----------------------------------------------------------------------------------------------------
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+LOCAL_RANK: 1 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+LOCAL_RANK: 3 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+LOCAL_RANK: 2 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+  | Name     | Type                       | Params
+--------------------------------------------------------
+0 | ifmodel  | GVPTransformerModel        | 141 M
+1 | model    | T5ForConditionalGeneration | 9.9 M
+2 | loss     | CrossEntropyLoss           | 0
+3 | accuracy | Accuracy                   | 0
+4 | perplex  | CrossEntropyLoss           | 0
+--------------------------------------------------------
+151 M     Trainable params
+0         Non-trainable params
+151 M     Total params
+303.039   Total estimated model params size (MB)
+Sanity Checking: 0it [00:00, ?it/s]pre filter 22737
+pre filter 22737
+pre filter 22737
+post filter 20985
+post filter 20985
+post filter 20985
+pre filter 22737
+post filter 20985
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Sanity Checking DataLoader 0:   0% 0/2 [00:00<?, ?it/s]Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+                                                               Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+pre filter 22737
+pre filter 22737
+pre filter 22737
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Found 1 chains: ['A']
+Loaded chain A
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+post filter 20985
+post filter 20985
+post filter 20985
+pre filter 22737
+post filter 20985
+Epoch 0:   0% 0/2321 [00:00<?, ?it/s] Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+/ext3/miniconda3/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/logger_connector/result.py:229: UserWarning: You called `self.log('length', ...)` in your `training_step` but the value needs to be floating point. Converting it to torch.float32.
+  warning_cache.warn(
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
+Loaded chain A
+Found 1 chains: ['A']
