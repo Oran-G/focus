@@ -80,7 +80,7 @@ def main(cfg: DictConfig) -> None:
 
         else:
             sizes[3].append(key)
-    # print(len(sizes[0]), len(sizes[1]), len(sizes[2]), len(sizes[3]))
+    print('.7 sizes', len(sizes[0]), len(sizes[1]), len(sizes[2]), len(sizes[3]))
 
     validation = []
     for i in range(4):
@@ -200,7 +200,7 @@ def main(cfg: DictConfig) -> None:
 
         else:
             sizes[3].append(key)
-    # print(len(sizes[0]), len(sizes[1]), len(sizes[2]), len(sizes[3]))
+     print('.9 sizes', len(sizes[0]), len(sizes[1]), len(sizes[2]), len(sizes[3]))
 
     validation = []
     for i in range(4):
