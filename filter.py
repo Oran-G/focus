@@ -93,13 +93,13 @@ def main(cfg: DictConfig) -> None:
     for i in range(4):
         print(6**i)
         for j in range(6**i):
-            test.append(sizes[3-i][j+(5**i)] )
+            test.append(sizes[3-i][j+(6**i)] )
     print(len(test))
     train = []
     for i in range(4):
         print(6**i)
-        for j in range(len(sizes[i]) - (2*(5**i))):
-            train.append(sizes[i][(2*(5**i)) + j])
+        for j in range(len(sizes[i]) - (2*(6**i))):
+            train.append(sizes[i][(2*(6**i)) + j])
     print(len(train))
     print(len(train)+len(test)+len(validation))
 
@@ -213,13 +213,13 @@ def main(cfg: DictConfig) -> None:
     for i in range(4):
         print(6**i)
         for j in range(6**i):
-            test.append(sizes[3-i][j+(5**i)] )
+            test.append(sizes[3-i][j+(6**i)] )
     print(len(test))
     train = []
     for i in range(4):
         print(6**i)
-        for j in range(len(sizes[i]) - (2*(5**i))):
-            train.append(sizes[i][(2*(5**i)) + j])
+        for j in range(len(sizes[i]) - (2*(6**i))):
+            train.append(sizes[i][(2*(6**i)) + j])
     print(len(train))
     print(len(train)+len(test)+len(validation))
 
