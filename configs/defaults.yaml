@@ -2,5 +2,6 @@ defaults:
   - io: nyufiltered
   - model: fold
   - esm: esm
+  - seq_identity: .3
   - override hydra/launcher: submitit_slurm
   
