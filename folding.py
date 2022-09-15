@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from transformers import T5Config, T5ForConditionalGeneration, get_linear_schedule_with_warmup,  get_polynomial_decay_schedule_with_warmup
+from transformers import T5Config, T5ForConditionalGeneration, get_linear_schedule_with_warmup,  get_polynomial_decay_schedule_with_warmup, BertGenerationConfig, BertGenerationDecoder
 from fairseq.data import FastaDataset, EncodedFastaDataset, Dictionary, BaseWrapperDataset
 from constants import tokenization, neucleotides
 from torch.utils.data import DataLoader, Dataset
@@ -277,6 +277,14 @@ class RebaseT5(pl.LightningModule):
             eos_token_id=self.ifalphabet.eos_idx,
         )
         self.model = T5ForConditionalGeneration(t5_config)
+        bertConfig = BertGenerationConfig(
+            vocab_size=len(self.ifalphabet),
+            hidden_size=self.hparams.model.d_model,
+            intermediate_size=self.hparams.model.d_ff,
+            pad_token_id=self.ifalphabet.padding_idx,
+            eos_token_id=self.ifalphabet.eos_idx,
+        )
+        self.bert = BertGenerationDecoder(bertConfig)
 
         '''
         loss: https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss
@@ -330,6 +338,9 @@ class RebaseT5(pl.LightningModule):
         else:
             token_representations = self.ifmodel.encoder(batch['coords'], batch['coord_pad'], batch['coord_conf'])
 
+        #implement DESTROYER
+        if self.hparams.destroy == True:
+            token_representations[token_representations] = 0
         '''
         take out attention mask - I do not think it is needed right now
         labels changed so that padding idx is -100 - needed as -100 is the default ignore index for crossEntropyLoss,and is used by T5 in this case
@@ -342,11 +353,17 @@ class RebaseT5(pl.LightningModule):
         
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
+        if self.hparams.model_type == 'Bert':
+            try:
+                pred = self.model(encoder_hidden_states=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
+            except RuntimeError:
+                print(token_representations['encoder_out'], batch, batch_idx)
+        else:
+            try:
+                pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
+            except RuntimeError:
+                print(token_representations['encoder_out'], batch, batch_idx)
         
-        try:
-            pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
-        except RuntimeError:
-            print(token_representations['encoder_out'], batch, batch_idx)
         batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
         #import pdb; pdb.set_trace()
         loss=self.loss(torch.transpose(pred[1],1, 2), batch['bind'])
@@ -372,6 +389,10 @@ class RebaseT5(pl.LightningModule):
         torch.cuda.empty_cache()
         
         token_representations = self.ifmodel.encoder(batch['coords'], batch['coord_pad'], batch['coord_conf'])
+        #implement DESTROYER
+        if self.hparams.destroy == True:
+            token_representations[token_representations] = 0
+
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
         try:
