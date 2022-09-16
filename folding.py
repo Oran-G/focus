@@ -277,14 +277,6 @@ class RebaseT5(pl.LightningModule):
             eos_token_id=self.ifalphabet.eos_idx,
         )
         self.model = T5ForConditionalGeneration(t5_config)
-        bertConfig = BertGenerationConfig(
-            vocab_size=len(self.ifalphabet),
-            hidden_size=self.hparams.model.d_model,
-            intermediate_size=self.hparams.model.d_ff,
-            pad_token_id=self.ifalphabet.padding_idx,
-            eos_token_id=self.ifalphabet.eos_idx,
-        )
-        self.bert = BertGenerationDecoder(bertConfig)
 
         '''
         loss: https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html#torch.nn.CrossEntropyLoss
@@ -353,16 +345,11 @@ class RebaseT5(pl.LightningModule):
         
         label = batch['bind']
         label[label==self.ifalphabet.padding_idx] = -100
-        if self.hparams.model_type == 'Bert':
-            try:
-                pred = self.model(encoder_hidden_states=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
-            except RuntimeError:
-                print(token_representations['encoder_out'], batch, batch_idx)
-        else:
-            try:
-                pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
-            except RuntimeError:
-                print(token_representations['encoder_out'], batch, batch_idx)
+
+        try:
+            pred = self.model(encoder_outputs=[torch.transpose(token_representations['encoder_out'][0], 0, 1)], labels=label)
+        except RuntimeError:
+            print(token_representations['encoder_out'], batch, batch_idx)
         
         batch['bind'][batch['bind']==-100] = self.ifalphabet.padding_idx
         #import pdb; pdb.set_trace()
