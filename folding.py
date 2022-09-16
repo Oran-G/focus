@@ -426,9 +426,9 @@ class RebaseT5(pl.LightningModule):
         }
     
     def train_dataloader(self):
-        if self.cfg.seq_identity = .9:
+        if self.cfg.seq_identity = '.9':
             cs = f'{self.cfg.io.final}-9'
-        elif self.cfg.seq_identity = .7:
+        elif self.cfg.seq_identity = '.7':
             cs = f'{self.cfg.io.final}-7'
         else:
             cs = self.cfg.io.final
@@ -446,9 +446,9 @@ class RebaseT5(pl.LightningModule):
         
         return dataloader
     def val_dataloader(self):
-        if self.cfg.seq_identity = .9:
+        if self.cfg.seq_identity = '.9':
             cs = f'{self.cfg.io.final}-9'
-        elif self.cfg.seq_identity = .7:
+        elif self.cfg.seq_identity = '.7':
             cs = f'{self.cfg.io.final}-7'
         else:
             cs = self.cfg.io.final
